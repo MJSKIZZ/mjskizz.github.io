@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reaction time — AQA RP6</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1><a href="../index.html" style="color: var(--accent);">← All practicals</a></h1>
+    <nav><a href="../index.html">Hub</a></nav>
+  </header>
+  <main class="wrap">
+    <div class="subject-head bio"><span class="chip">Biology · RP6</span><h2 style="margin:0;">Human reaction time — ruler drop</h2></div>
+    <p class="note">Plan and carry out an investigation into a factor affecting human reaction time. Uses s = ½gt² to convert distance caught to time.</p>
+
+    <div class="prac">
+      <section class="panel">
+        <h3>Simulation</h3>
+        <div class="sim">
+          <canvas id="ruler" class="sim-canvas" width="560" height="340"></canvas>
+        </div>
+        <div class="controls">
+          <div class="row"><label>Subject</label>
+            <select id="subject">
+              <option value="normal">Normal</option>
+              <option value="caffeine">After caffeine</option>
+              <option value="tired">Tired</option>
+            </select>
+          </div>
+          <div class="row">
+            <button class="btn" id="dropBtn">Drop ruler</button>
+            <button class="btn" id="catchBtn" disabled>Catch!</button>
+            <button class="btn secondary" id="resetBtn">Reset</button>
+          </div>
+        </div>
+        <div class="readout">
+          <div class="box"><div class="k">Distance / cm</div><div class="v"><span id="d">—</span></div></div>
+          <div class="box"><div class="k">Reaction time / s</div><div class="v"><span id="rt">—</span></div></div>
+          <div class="box"><div class="k">Mean / s</div><div class="v"><span id="mean">—</span></div></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h3>Method</h3>
+        <ol class="method">
+          <li>Subject sits with their arm resting on a table, hand over the edge, thumb and finger apart.</li>
+          <li>Hold a 30 cm ruler so that the 0 cm mark is level with the top of their thumb.</li>
+          <li>Without warning, release the ruler. The subject catches it as quickly as possible.</li>
+          <li>Record the distance on the ruler at the point where it was caught.</li>
+          <li>Use s = ½gt² → t = √(2s/g) to convert distance to reaction time (g = 9.81 m/s²).</li>
+          <li>Repeat at least 3 times per condition and calculate the mean.</li>
+          <li>Compare between conditions (e.g. before/after caffeine, tired, different ages).</li>
+        </ol>
+
+        <h4>Variables</h4>
+        <div class="vars">
+          <div><b>Independent:</b> Condition (e.g. caffeine dose, practice, tiredness)</div>
+          <div><b>Dependent:</b> Reaction time (calculated from distance)</div>
+          <div><b>Control:</b> Same subject's posture, same ruler, same tester, no warning.</div>
+        </div>
+
+        <h4>Results</h4>
+        <table class="results" id="tbl">
+          <thead><tr><th>Subject</th><th>Distance / cm</th><th>Time / s</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </section>
+    </div>
+  </main>
+
+  <script src="../common.js"></script>
+  <script>
+  (function () {
+    var U = window.PracUtil;
+    var canvas = document.getElementById('ruler'), ctx = canvas.getContext('2d');
+    var rulerY = 0, dropping = false, raf, t0 = 0, results = [];
+
+    function draw(yOffset) {
+      var W = canvas.width, H = canvas.height;
+      ctx.clearRect(0,0,W,H);
+      ctx.fillStyle = '#111318'; ctx.fillRect(0,0,W,H);
+      // hand
+      ctx.fillStyle = '#e8c49a';
+      ctx.fillRect(W/2 - 40, H-60, 80, 40);
+      ctx.fillRect(W/2 + 40, H-95, 25, 75); // thumb
+      // ruler
+      var rx = W/2 - 20, ry = 30 + yOffset, rh = 300;
+      ctx.fillStyle = '#f9e79f';
+      ctx.fillRect(rx, ry, 40, rh);
+      ctx.strokeStyle = '#b7950b'; ctx.lineWidth = 2;
+      ctx.strokeRect(rx, ry, 40, rh);
+      // marks
+      ctx.fillStyle = '#5d4e0e'; ctx.font = '11px monospace';
+      for (var cm = 0; cm <= 30; cm++) {
+        var yy = ry + cm*10;
+        ctx.strokeStyle = '#5d4e0e';
+        ctx.beginPath();
+        ctx.moveTo(rx, yy); ctx.lineTo(rx + (cm%5===0 ? 18 : 8), yy); ctx.stroke();
+        if (cm%5===0) ctx.fillText(cm + '', rx + 22, yy + 3);
+      }
+      // instruction
+      ctx.fillStyle = '#e6f3f5'; ctx.font = '14px system-ui';
+      if (dropping) ctx.fillText('Click Catch now!', 20, 24);
+      else ctx.fillText('Press Drop ruler to begin.', 20, 24);
+    }
+
+    function step() {
+      var dt = (Date.now() - t0) / 1000;
+      // s = ½gt² in meters -> pixels (10 px = 1 cm, 100 cm = 1 m -> 1000 px per m)
+      var s = 0.5 * 9.81 * dt * dt; // m
+      rulerY = s * 1000; // px
+      draw(rulerY);
+      if (rulerY > 300) { // ruler missed
+        dropping = false;
+        document.getElementById('d').textContent = '>30';
+        document.getElementById('rt').textContent = 'missed';
+        return;
+      }
+      raf = requestAnimationFrame(step);
+    }
+
+    document.getElementById('dropBtn').addEventListener('click', function () {
+      if (dropping) return;
+      // simulate a random delay before drop (0.5-2s) - but animation starts immediately
+      // subject has inherent reaction time
+      rulerY = 0; draw(0);
+      var subj = document.getElementById('subject').value;
+      // subject's base reaction time
+      var base = subj === 'caffeine' ? 0.18 : subj === 'tired' ? 0.32 : 0.22;
+      base += (Math.random() - 0.5) * 0.08;
+      var targetY = 0.5 * 9.81 * base * base * 1000; // px
+      // animate until target
+      dropping = true;
+      document.getElementById('catchBtn').disabled = false;
+      t0 = Date.now();
+      // auto-catch after base time (simulates human)
+      setTimeout(function () {
+        if (dropping) document.getElementById('catchBtn').click();
+      }, base * 1000);
+      step();
+    });
+
+    document.getElementById('catchBtn').addEventListener('click', function () {
+      if (!dropping) return;
+      cancelAnimationFrame(raf);
+      dropping = false;
+      document.getElementById('catchBtn').disabled = true;
+      var dt = (Date.now() - t0) / 1000;
+      var cm = rulerY / 10;
+      if (cm > 30) cm = 30;
+      document.getElementById('d').textContent = cm.toFixed(1);
+      document.getElementById('rt').textContent = dt.toFixed(3);
+      var subj = document.getElementById('subject').value;
+      U.addRow('tbl', [subj, cm.toFixed(1), dt.toFixed(3)]);
+      results.push(dt);
+      var mean = results.reduce(function(a,b){return a+b;},0) / results.length;
+      document.getElementById('mean').textContent = mean.toFixed(3);
+    });
+
+    document.getElementById('resetBtn').addEventListener('click', function () {
+      results = []; U.clearTable('tbl');
+      document.getElementById('d').textContent = '—';
+      document.getElementById('rt').textContent = '—';
+      document.getElementById('mean').textContent = '—';
+      rulerY = 0; draw(0);
+    });
+
+    draw(0);
+  })();
+  </script>
+</body>
+</html>

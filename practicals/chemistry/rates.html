@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rates — AQA RP12</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1><a href="../index.html" style="color: var(--accent);">← All practicals</a></h1>
+    <nav><a href="../index.html">Hub</a></nav>
+  </header>
+  <main class="wrap">
+    <div class="subject-head chem"><span class="chip">Chemistry · RP12</span><h2 style="margin:0;">Effect of concentration on rate (disappearing cross)</h2></div>
+    <p class="note">Sodium thiosulfate reacts with hydrochloric acid to produce a fine sulfur precipitate, which turns the solution cloudy.</p>
+
+    <div class="prac">
+      <section class="panel">
+        <h3>Simulation</h3>
+        <div class="sim">
+          <canvas id="beaker" class="sim-canvas" width="560" height="360"></canvas>
+        </div>
+        <div class="controls">
+          <div class="row"><label>Na₂S₂O₃ concentration</label>
+            <input type="range" id="conc" min="0.05" max="0.4" step="0.05" value="0.2">
+            <span class="val"><span id="concV">0.20</span> mol/dm³</span>
+          </div>
+          <div class="row"><label>Temperature / °C</label>
+            <input type="number" id="temp" value="20" min="15" max="60">
+          </div>
+          <div class="row">
+            <button class="btn" id="runBtn">Start reaction</button>
+            <button class="btn secondary" id="resetBtn">Reset</button>
+          </div>
+        </div>
+        <div class="readout">
+          <div class="box"><div class="k">Elapsed</div><div class="v"><span id="t">0.0</span> s</div></div>
+          <div class="box"><div class="k">Rate (1/time)</div><div class="v"><span id="r">—</span> s⁻¹</div></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h3>Equation</h3>
+        <p class="note">Na₂S₂O₃(aq) + 2HCl(aq) → 2NaCl(aq) + SO₂(g) + S(s) + H₂O(l)</p>
+
+        <h3>Method</h3>
+        <ol class="method">
+          <li>Measure 50 cm³ of sodium thiosulfate (different concentrations) into a conical flask.</li>
+          <li>Place the flask on a piece of paper with a black cross drawn on it.</li>
+          <li>Add 10 cm³ of dilute hydrochloric acid, start a timer and swirl once.</li>
+          <li>Stop the timer when the cross is no longer visible through the flask from directly above.</li>
+          <li>Repeat with different Na₂S₂O₃ concentrations (dilute with water, keep total volume constant at 50 cm³).</li>
+          <li>Calculate rate = 1 / time and plot rate against concentration.</li>
+        </ol>
+
+        <h4>Variables</h4>
+        <div class="vars">
+          <div><b>Independent:</b> Concentration of Na₂S₂O₃</div>
+          <div><b>Dependent:</b> Time for the cross to disappear</div>
+          <div><b>Control:</b> Volume of HCl, temperature, depth of solution, same cross &amp; observer.</div>
+        </div>
+
+        <h4>Results</h4>
+        <table class="results" id="tbl">
+          <thead><tr><th>[Na₂S₂O₃] /mol dm⁻³</th><th>Time /s</th><th>Rate (1/t)</th></tr></thead>
+          <tbody></tbody>
+        </table>
+
+        <h4>Graph: rate vs concentration</h4>
+        <canvas id="graph" class="graph"></canvas>
+      </section>
+    </div>
+  </main>
+
+  <script src="../common.js"></script>
+  <script>
+  (function () {
+    var U = window.PracUtil;
+    var canvas = document.getElementById('beaker'), ctx = canvas.getContext('2d');
+    U.bindRange('conc','concV', function(v){ return parseFloat(v).toFixed(2); });
+    var graph = new U.Graph(document.getElementById('graph'), {
+      xLabel: '[Na₂S₂O₃] /mol dm⁻³', yLabel: 'Rate / s⁻¹',
+      xMin: 0, xMax: 0.45, yMin: 0, yMax: 0.08, color: '#ff9800'
+    });
+
+    var running = false, t0 = 0, turbidity = 0, targetTime = 0;
+
+    function draw() {
+      var W = canvas.width, H = canvas.height;
+      ctx.clearRect(0,0,W,H);
+      ctx.fillStyle = '#0b0d13'; ctx.fillRect(0,0,W,H);
+      // white paper with cross below beaker
+      ctx.fillStyle = '#f1f1f1'; ctx.fillRect(W/2 - 130, H-80, 260, 60);
+      ctx.strokeStyle = '#000'; ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(W/2 - 20, H-68); ctx.lineTo(W/2 + 20, H-30);
+      ctx.moveTo(W/2 + 20, H-68); ctx.lineTo(W/2 - 20, H-30);
+      ctx.stroke();
+      // beaker
+      var bx = W/2, by = 70, bw = 160, bh = 180;
+      ctx.strokeStyle = '#8fe1f2'; ctx.lineWidth = 2;
+      ctx.strokeRect(bx - bw/2, by, bw, bh);
+      // liquid — pale yellow, turbidity increases
+      var alpha = 0.3 + turbidity * 0.7;
+      var r = 240, g = 240 - turbidity * 50, b = 200 - turbidity * 120;
+      ctx.fillStyle = 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+      ctx.fillRect(bx - bw/2 + 2, by + 20, bw - 4, bh - 22);
+      // label
+      ctx.fillStyle = '#e6f3f5'; ctx.font = '13px system-ui';
+      ctx.fillText('Viewed from above: cross ' + (turbidity > 0.95 ? 'hidden' : 'visible'), 20, 26);
+    }
+
+    function rateFunc(c, T) {
+      // rate ~ k[conc]; temperature doubles every ~10°C
+      var k = 0.2 * Math.pow(2, (T-20)/10);
+      return k * c;
+    }
+
+    function loop() {
+      var dt = (Date.now() - t0) / 1000;
+      var progress = Math.min(1, dt / targetTime);
+      turbidity = progress;
+      document.getElementById('t').textContent = dt.toFixed(1);
+      draw();
+      if (progress >= 1) {
+        running = false;
+        var rate = 1/dt;
+        document.getElementById('r').textContent = rate.toFixed(4);
+        var c = parseFloat(document.getElementById('conc').value);
+        U.addRow('tbl', [c.toFixed(2), dt.toFixed(1), rate.toFixed(4)]);
+        graph.add(c, rate);
+        return;
+      }
+      requestAnimationFrame(loop);
+    }
+
+    document.getElementById('runBtn').addEventListener('click', function () {
+      if (running) return;
+      var c = parseFloat(document.getElementById('conc').value);
+      var T = parseFloat(document.getElementById('temp').value);
+      var r = rateFunc(c, T);
+      r *= 0.9 + Math.random()*0.2;
+      targetTime = 1/r;
+      running = true; t0 = Date.now(); turbidity = 0;
+      document.getElementById('r').textContent = '—';
+      loop();
+    });
+    document.getElementById('resetBtn').addEventListener('click', function () {
+      turbidity = 0; running = false;
+      document.getElementById('t').textContent = '0.0';
+      document.getElementById('r').textContent = '—';
+      U.clearTable('tbl'); graph.reset();
+      draw();
+    });
+
+    draw();
+  })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,216 @@
+/* AQA GCSE Trilogy Required Practicals - Shared styles */
+:root {
+  --bg: #0f1116;
+  --panel: #1a1d24;
+  --panel-2: #242832;
+  --ink: #e6f3f5;
+  --muted: #9aa4b2;
+  --accent: #00bcd4;
+  --accent-2: #00acc1;
+  --bio: #4caf50;
+  --chem: #ff9800;
+  --phys: #3f51b5;
+  --danger: #f44336;
+  --ok: #66bb6a;
+  --line: #2e3340;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Segoe UI', 'Roboto', system-ui, sans-serif;
+  min-height: 100vh;
+  line-height: 1.5;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Header */
+.topbar {
+  background: linear-gradient(90deg, #101218, #1a1d24);
+  border-bottom: 1px solid var(--line);
+  padding: 16px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.topbar h1 { margin: 0; font-size: 1.25rem; color: var(--accent); }
+.topbar nav a { margin-left: 16px; color: var(--muted); font-weight: 500; }
+.topbar nav a:hover { color: var(--accent); text-decoration: none; }
+
+/* Layout */
+.wrap { max-width: 1100px; margin: 0 auto; padding: 24px; }
+.hero { text-align: center; padding: 40px 16px; }
+.hero h2 { font-size: 2rem; color: var(--accent); margin: 0 0 8px; }
+.hero p { color: var(--muted); max-width: 640px; margin: 0 auto; }
+
+/* Practical cards grid */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  margin-top: 24px;
+}
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 18px;
+  transition: transform .15s ease, border-color .15s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.card:hover { transform: translateY(-2px); border-color: var(--accent); }
+.card .tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 999px;
+  width: fit-content;
+}
+.card.bio .tag { background: rgba(76,175,80,0.15); color: var(--bio); }
+.card.chem .tag { background: rgba(255,152,0,0.15); color: var(--chem); }
+.card.phys .tag { background: rgba(63,81,181,0.2); color: #8fa3ff; }
+.card h3 { margin: 4px 0 0; font-size: 1.05rem; color: var(--ink); }
+.card p { margin: 0; color: var(--muted); font-size: 0.9rem; }
+.card .go {
+  margin-top: 8px;
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+/* Practical page layout */
+.prac {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+}
+@media (min-width: 960px) {
+  .prac { grid-template-columns: 1.2fr 1fr; }
+}
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 20px;
+}
+.panel h3 { margin-top: 0; color: var(--accent); }
+.panel h4 { color: var(--accent-2); margin-bottom: 6px; }
+
+/* Sim area */
+.sim {
+  background: #0c0e13;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px;
+  min-height: 360px;
+  position: relative;
+}
+canvas.sim-canvas { width: 100%; height: auto; display: block; background: #0a0c11; border-radius: 8px; }
+
+/* Controls */
+.controls { display: flex; flex-direction: column; gap: 12px; margin-top: 14px; }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.row label { min-width: 130px; color: var(--muted); font-size: 0.9rem; }
+.row input[type=range] { flex: 1; min-width: 140px; }
+.row input[type=number], .row select, .row input[type=text] {
+  background: var(--panel-2);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font: inherit;
+}
+.row .val {
+  min-width: 64px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  font-weight: 600;
+}
+button.btn {
+  background: var(--accent);
+  color: #06232a;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .2s, transform .1s;
+}
+button.btn:hover { background: var(--accent-2); }
+button.btn:active { transform: translateY(1px); }
+button.btn.secondary { background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); }
+button.btn.danger { background: var(--danger); color: white; }
+
+/* Tables */
+table.results {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  font-size: 0.92rem;
+}
+table.results th, table.results td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+table.results th { color: var(--accent-2); font-weight: 600; background: #161a22; }
+table.results td.num { text-align: right; font-variant-numeric: tabular-nums; }
+table.results tr:hover td { background: #161a22; }
+
+/* Method list */
+ol.method { padding-left: 22px; }
+ol.method li { margin-bottom: 6px; color: var(--ink); }
+.vars { display: grid; grid-template-columns: 1fr; gap: 6px; margin: 10px 0; }
+.vars div b { color: var(--accent-2); }
+.readout {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.readout .box {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.readout .box .k { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.readout .box .v { font-size: 1.15rem; font-weight: 700; color: var(--ink); }
+
+/* Chip / subject header */
+.subject-head {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 6px;
+}
+.subject-head .chip {
+  padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; text-transform: uppercase;
+}
+.subject-head.bio .chip { background: rgba(76,175,80,0.15); color: var(--bio); }
+.subject-head.chem .chip { background: rgba(255,152,0,0.15); color: var(--chem); }
+.subject-head.phys .chip { background: rgba(63,81,181,0.2); color: #8fa3ff; }
+
+.note { color: var(--muted); font-size: 0.88rem; }
+.ok { color: var(--ok); }
+.warn { color: #ffb74d; }
+.err { color: var(--danger); }
+
+hr.sep { border: none; border-top: 1px solid var(--line); margin: 16px 0; }
+
+/* Small graph canvases */
+canvas.graph { width: 100%; height: 220px; background: #0a0c11; border: 1px solid var(--line); border-radius: 8px; }
+
+/* Responsive */
+@media (max-width: 600px) {
+  .topbar { padding: 12px 16px; }
+  .topbar nav a { margin-left: 10px; font-size: 0.9rem; }
+  .wrap { padding: 14px; }
+  .hero h2 { font-size: 1.5rem; }
+}

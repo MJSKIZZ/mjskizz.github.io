@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Titration — AQA RP9</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1><a href="../index.html" style="color: var(--accent);">← All practicals</a></h1>
+    <nav><a href="../index.html">Hub</a></nav>
+  </header>
+  <main class="wrap">
+    <div class="subject-head chem"><span class="chip">Chemistry · RP9</span><h2 style="margin:0;">Titration — acid and alkali</h2></div>
+    <p class="note">Find the concentration of a dilute acid by titration against a standard alkali using an indicator.</p>
+
+    <div class="prac">
+      <section class="panel">
+        <h3>Simulation</h3>
+        <div class="sim">
+          <canvas id="titr" class="sim-canvas" width="560" height="420"></canvas>
+        </div>
+        <div class="controls">
+          <div class="row">
+            <button class="btn" id="drop" disabled>Add acid (drop)</button>
+            <button class="btn" id="slow" disabled>Add 1 cm³</button>
+            <button class="btn" id="fast" disabled>Add 5 cm³</button>
+          </div>
+          <div class="row">
+            <button class="btn secondary" id="start">Fill burette</button>
+            <button class="btn danger" id="reset">Reset</button>
+          </div>
+        </div>
+        <div class="readout">
+          <div class="box"><div class="k">Burette</div><div class="v"><span id="vol">0.00</span> cm³ added</div></div>
+          <div class="box"><div class="k">Flask pH</div><div class="v"><span id="ph">13.0</span></div></div>
+          <div class="box"><div class="k">End point</div><div class="v" id="end">—</div></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h3>Method</h3>
+        <ol class="method">
+          <li>Use a pipette to accurately measure 25.0 cm³ of sodium hydroxide (alkali) into a conical flask.</li>
+          <li>Add a few drops of phenolphthalein indicator (pink in alkali, colourless in acid).</li>
+          <li>Fill a burette with dilute hydrochloric acid of known concentration. Record the initial reading at the bottom of the meniscus.</li>
+          <li>Add acid slowly from the burette, swirling the flask.</li>
+          <li>As the end point approaches, add drop by drop until the pink just disappears.</li>
+          <li>Record the final burette reading. Titre = final − initial.</li>
+          <li>Repeat until you get concordant titres (within 0.10 cm³).</li>
+        </ol>
+
+        <h4>Variables</h4>
+        <div class="vars">
+          <div><b>Independent:</b> Volume of acid added (cm³)</div>
+          <div><b>Dependent:</b> pH / indicator colour</div>
+          <div><b>Control:</b> Volume &amp; concentration of alkali, same indicator, same pipette/burette.</div>
+        </div>
+
+        <h4>Results</h4>
+        <table class="results" id="tbl">
+          <thead><tr><th>Run</th><th>Initial /cm³</th><th>Final /cm³</th><th>Titre /cm³</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <div class="row"><button class="btn" id="record">Record titre</button></div>
+
+        <h4>Calculation</h4>
+        <p class="note">HCl + NaOH → NaCl + H₂O. Moles NaOH = C × V. Since 1:1, moles HCl = moles NaOH. C(HCl) = moles / V(HCl).</p>
+      </section>
+    </div>
+  </main>
+
+  <script src="../common.js"></script>
+  <script>
+  (function () {
+    var U = window.PracUtil;
+    var canvas = document.getElementById('titr'), ctx = canvas.getContext('2d');
+
+    var state = { filled: false, added: 0, endpoint: 25.0 + (Math.random()-0.5)*0.4, run: 0 };
+
+    function pH(added) {
+      // 25 cm3 of 0.1M NaOH + added cm3 of 0.1M HCl approx
+      var nOH = 25 * 0.1/1000, nH = added * 0.1/1000;
+      var diff = nOH - nH;
+      var totalV = (25 + added)/1000;
+      if (Math.abs(diff) < 1e-9) return 7;
+      if (diff > 0) {
+        var OH = diff/totalV;
+        return 14 + Math.log10(OH);
+      } else {
+        var H = -diff/totalV;
+        return -Math.log10(H);
+      }
+    }
+
+    function draw() {
+      var W = canvas.width, H = canvas.height;
+      ctx.clearRect(0,0,W,H);
+      ctx.fillStyle = '#0b0d13'; ctx.fillRect(0,0,W,H);
+      // burette
+      var bx = W/2, by = 30, bh = 250, bw = 26;
+      ctx.fillStyle = '#0a0c11';
+      ctx.fillRect(bx - bw/2, by, bw, bh);
+      ctx.strokeStyle = '#8fe1f2'; ctx.lineWidth = 2;
+      ctx.strokeRect(bx - bw/2, by, bw, bh);
+      // liquid in burette (acid, colourless or pale)
+      if (state.filled) {
+        var remain = Math.max(0, 50 - state.added);
+        var fillH = bh * (remain/50);
+        ctx.fillStyle = 'rgba(200,230,250,0.6)';
+        ctx.fillRect(bx - bw/2 + 2, by + (bh - fillH), bw - 4, fillH);
+      }
+      // tap + stem
+      ctx.fillStyle = '#aaa'; ctx.fillRect(bx - 10, by + bh, 20, 8);
+      ctx.fillRect(bx - 2, by + bh + 8, 4, 22);
+      // scale
+      ctx.fillStyle = '#e6f3f5'; ctx.font = '10px system-ui';
+      for (var i = 0; i <= 10; i++) {
+        var y = by + (bh * i/10);
+        ctx.fillText((i*5) + '', bx + 18, y+3);
+        ctx.strokeStyle = '#445'; ctx.beginPath();
+        ctx.moveTo(bx + bw/2, y); ctx.lineTo(bx + bw/2 + 5, y); ctx.stroke();
+      }
+      // conical flask
+      var fx = bx, fy = by + bh + 60, fw = 140, fh = 100;
+      ctx.fillStyle = 'rgba(40,80,120,0.15)';
+      ctx.beginPath();
+      ctx.moveTo(fx - 18, fy); ctx.lineTo(fx + 18, fy);
+      ctx.lineTo(fx + fw/2, fy + fh); ctx.lineTo(fx - fw/2, fy + fh); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#8fe1f2'; ctx.lineWidth = 2; ctx.stroke();
+      // liquid colour (pink -> colourless near endpoint)
+      var frac = Math.min(1, state.added / state.endpoint);
+      var r, g, b;
+      if (frac < 0.99) {
+        // pink
+        r = 220 + (235-220)*frac; g = 80 + (180-80)*frac; b = 170 + (220-170)*frac;
+      } else {
+        r = 240; g = 240; b = 240;
+      }
+      ctx.fillStyle = 'rgba(' + Math.round(r) + ',' + Math.round(g) + ',' + Math.round(b) + ',0.7)';
+      ctx.beginPath();
+      ctx.moveTo(fx - fw/2 + 4, fy + fh - 6);
+      ctx.lineTo(fx + fw/2 - 4, fy + fh - 6);
+      ctx.lineTo(fx + 16, fy + 30); ctx.lineTo(fx - 16, fy + 30);
+      ctx.closePath(); ctx.fill();
+      // labels
+      ctx.fillStyle = '#e6f3f5'; ctx.font = '13px system-ui';
+      ctx.fillText('HCl (aq)', bx + 40, by + 40);
+      ctx.fillText('NaOH + phenolphthalein', fx - 60, fy + fh + 22);
+      // pH display in sim too
+      ctx.fillStyle = '#9aa4b2'; ctx.font = '12px system-ui';
+      ctx.fillText('pH = ' + pH(state.added).toFixed(1), 20, 30);
+    }
+
+    function update() {
+      document.getElementById('vol').textContent = state.added.toFixed(2);
+      document.getElementById('ph').textContent = pH(state.added).toFixed(2);
+      var end = Math.abs(state.added - state.endpoint) < 0.15;
+      var over = state.added > state.endpoint + 0.3;
+      document.getElementById('end').textContent = over ? 'Overshot! (colourless)' : end ? 'End point reached' : state.added < state.endpoint - 2 ? 'Still pink' : 'Near endpoint';
+      draw();
+    }
+
+    document.getElementById('start').addEventListener('click', function () {
+      state.filled = true;
+      ['drop','slow','fast'].forEach(function (id) { document.getElementById(id).disabled = false; });
+      update();
+    });
+    document.getElementById('drop').addEventListener('click', function () {
+      if (!state.filled) return;
+      state.added = Math.min(50, state.added + 0.10);
+      update();
+    });
+    document.getElementById('slow').addEventListener('click', function () {
+      if (!state.filled) return;
+      state.added = Math.min(50, state.added + 1.0);
+      update();
+    });
+    document.getElementById('fast').addEventListener('click', function () {
+      if (!state.filled) return;
+      state.added = Math.min(50, state.added + 5.0);
+      update();
+    });
+    document.getElementById('record').addEventListener('click', function () {
+      state.run++;
+      U.addRow('tbl', [state.run, '0.00', state.added.toFixed(2), state.added.toFixed(2)]);
+    });
+    document.getElementById('reset').addEventListener('click', function () {
+      state = { filled: false, added: 0, endpoint: 25.0 + (Math.random()-0.5)*0.4, run: state.run };
+      update();
+    });
+
+    update();
+  })();
+  </script>
+</body>
+</html>

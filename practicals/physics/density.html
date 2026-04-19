@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Density — AQA RP18</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1><a href="../index.html" style="color: var(--accent);">← All practicals</a></h1>
+    <nav><a href="../index.html">Hub</a></nav>
+  </header>
+  <main class="wrap">
+    <div class="subject-head phys"><span class="chip">Physics · RP18</span><h2 style="margin:0;">Density of regular &amp; irregular solids</h2></div>
+    <p class="note">ρ = m / V. Measure mass on a balance and volume by measuring dimensions (regular) or water displacement (irregular).</p>
+
+    <div class="prac">
+      <section class="panel">
+        <h3>Simulation</h3>
+        <div class="sim">
+          <canvas id="rig" class="sim-canvas" width="560" height="360"></canvas>
+        </div>
+        <div class="controls">
+          <div class="row"><label>Object</label>
+            <select id="obj">
+              <option value="cube">Regular cube (copper)</option>
+              <option value="cuboid">Regular cuboid (aluminium)</option>
+              <option value="stone">Irregular stone</option>
+              <option value="key">Irregular metal key</option>
+            </select>
+          </div>
+          <div class="row">
+            <button class="btn" id="weighBtn">Measure mass</button>
+            <button class="btn" id="rulerBtn">Use ruler (regular only)</button>
+            <button class="btn" id="dispBtn">Water displacement</button>
+            <button class="btn secondary" id="resetBtn">Reset</button>
+          </div>
+        </div>
+        <div class="readout">
+          <div class="box"><div class="k">Mass</div><div class="v"><span id="m">—</span> g</div></div>
+          <div class="box"><div class="k">Volume</div><div class="v"><span id="V">—</span> cm³</div></div>
+          <div class="box"><div class="k">Density</div><div class="v"><span id="rho">—</span> g/cm³</div></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h3>Method — regular object</h3>
+        <ol class="method">
+          <li>Place the object on a top-pan balance and record the mass.</li>
+          <li>Measure the length, width and height with a ruler.</li>
+          <li>Volume = l × w × h. Density ρ = m / V.</li>
+        </ol>
+
+        <h3>Method — irregular object (displacement)</h3>
+        <ol class="method">
+          <li>Place the object on a top-pan balance and record the mass.</li>
+          <li>Fill a eureka (displacement) can with water to above the spout. Let it drain until water stops.</li>
+          <li>Place an empty measuring cylinder under the spout.</li>
+          <li>Carefully lower the object into the can. Water equal to the object's volume pours into the cylinder.</li>
+          <li>Read the volume of water in the cylinder. This equals the object's volume.</li>
+        </ol>
+
+        <h4>Variables</h4>
+        <div class="vars">
+          <div><b>Independent:</b> The object being measured.</div>
+          <div><b>Dependent:</b> Mass, volume and calculated density.</div>
+          <div><b>Control:</b> Tare balance, same water temperature, same measuring cylinder.</div>
+        </div>
+
+        <h4>Results</h4>
+        <table class="results" id="tbl">
+          <thead><tr><th>Object</th><th>m /g</th><th>V /cm³</th><th>ρ /g cm⁻³</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </section>
+    </div>
+  </main>
+
+  <script src="../common.js"></script>
+  <script>
+  (function () {
+    var U = window.PracUtil;
+    var canvas = document.getElementById('rig'), ctx = canvas.getContext('2d');
+    // actual properties
+    var objs = {
+      cube:   { m: 268, V: 30, regular: true, name: 'Copper cube' },
+      cuboid: { m: 81,  V: 30, regular: true, name: 'Aluminium cuboid' },
+      stone:  { m: 110, V: 42, regular: false, name: 'Stone' },
+      key:    { m: 24,  V: 3,  regular: false, name: 'Metal key' }
+    };
+    var mode = 'balance';
+
+    function draw() {
+      var W = canvas.width, H = canvas.height;
+      ctx.clearRect(0,0,W,H);
+      ctx.fillStyle = '#0b0d13'; ctx.fillRect(0,0,W,H);
+      var key = document.getElementById('obj').value;
+      var o = objs[key];
+      if (mode === 'balance') {
+        // balance
+        ctx.fillStyle = '#333'; ctx.fillRect(120, 220, 320, 60);
+        ctx.fillStyle = '#222'; ctx.fillRect(200, 180, 160, 40);
+        ctx.fillStyle = '#0aff6a'; ctx.font = 'bold 28px monospace';
+        ctx.fillText(o.m.toFixed(1) + ' g', 220, 210);
+        drawObject(o, key, 280, 130);
+      } else if (mode === 'ruler') {
+        // ruler + regular object
+        ctx.fillStyle = '#d9c58e'; ctx.fillRect(50, 250, W-100, 24);
+        for (var i = 0; i <= 30; i++) {
+          var x = 50 + i*(W-100)/30;
+          ctx.strokeStyle = '#000';
+          ctx.beginPath(); ctx.moveTo(x, 250); ctx.lineTo(x, 250 + (i%5===0 ? 10 : 5)); ctx.stroke();
+        }
+        drawObject(o, key, W/2, 180);
+        ctx.fillStyle = '#e6f3f5'; ctx.font = '13px system-ui';
+        if (!o.regular) ctx.fillText('Cannot use a ruler for an irregular object!', 100, 60);
+      } else if (mode === 'displacement') {
+        // eureka can
+        ctx.strokeStyle = '#8fe1f2'; ctx.lineWidth = 2;
+        ctx.strokeRect(100, 120, 140, 160);
+        ctx.fillStyle = 'rgba(140,210,230,0.4)';
+        ctx.fillRect(102, 140, 136, 138);
+        // spout
+        ctx.beginPath(); ctx.moveTo(240, 160); ctx.lineTo(300, 160); ctx.lineTo(300, 175); ctx.lineTo(240, 180); ctx.closePath(); ctx.strokeStyle = '#8fe1f2'; ctx.stroke();
+        // measuring cylinder
+        ctx.strokeRect(320, 180, 60, 160);
+        // water level in cylinder based on V
+        var h = Math.min(150, o.V * 2);
+        ctx.fillStyle = 'rgba(140,210,230,0.7)';
+        ctx.fillRect(322, 340 - h, 56, h);
+        // scale
+        ctx.fillStyle = '#aaa'; ctx.font = '10px monospace';
+        for (var v = 0; v <= 100; v += 10) {
+          var yy = 340 - v*1.5;
+          ctx.fillText(v + '', 384, yy + 3);
+        }
+        // object in water
+        drawObject(o, document.getElementById('obj').value, 170, 220);
+        ctx.fillStyle = '#e6f3f5'; ctx.font = '13px system-ui';
+        ctx.fillText('Eureka can', 100, 110);
+        ctx.fillText('Measuring cylinder', 300, 170);
+      }
+    }
+
+    function drawObject(o, key, cx, cy) {
+      if (key === 'cube') {
+        ctx.fillStyle = '#c87533'; ctx.fillRect(cx-30, cy-30, 60, 60);
+        ctx.strokeStyle = '#4a2612'; ctx.strokeRect(cx-30, cy-30, 60, 60);
+      } else if (key === 'cuboid') {
+        ctx.fillStyle = '#c0c0c0'; ctx.fillRect(cx-40, cy-18, 80, 36);
+        ctx.strokeStyle = '#555'; ctx.strokeRect(cx-40, cy-18, 80, 36);
+      } else if (key === 'stone') {
+        ctx.fillStyle = '#7a7a7a';
+        ctx.beginPath();
+        ctx.moveTo(cx-35, cy+10);
+        ctx.quadraticCurveTo(cx-45, cy-25, cx, cy-20);
+        ctx.quadraticCurveTo(cx+35, cy-28, cx+42, cy+5);
+        ctx.quadraticCurveTo(cx+30, cy+25, cx-10, cy+22);
+        ctx.closePath(); ctx.fill();
+      } else if (key === 'key') {
+        ctx.fillStyle = '#c9b037';
+        ctx.beginPath(); ctx.arc(cx-25, cy, 14, 0, Math.PI*2); ctx.fill();
+        ctx.fillRect(cx-12, cy-4, 50, 8);
+        ctx.fillRect(cx+30, cy-8, 6, 6); ctx.fillRect(cx+20, cy-8, 4, 6);
+      }
+    }
+
+    document.getElementById('obj').addEventListener('change', function () {
+      document.getElementById('m').textContent = '—';
+      document.getElementById('V').textContent = '—';
+      document.getElementById('rho').textContent = '—';
+      draw();
+    });
+
+    document.getElementById('weighBtn').addEventListener('click', function () {
+      mode = 'balance'; draw();
+      var o = objs[document.getElementById('obj').value];
+      var m = o.m * (0.99 + Math.random()*0.02);
+      document.getElementById('m').textContent = m.toFixed(1);
+      attemptRho();
+    });
+    document.getElementById('rulerBtn').addEventListener('click', function () {
+      mode = 'ruler'; draw();
+      var o = objs[document.getElementById('obj').value];
+      if (!o.regular) {
+        document.getElementById('V').textContent = 'n/a';
+        return;
+      }
+      document.getElementById('V').textContent = o.V.toFixed(1);
+      attemptRho();
+    });
+    document.getElementById('dispBtn').addEventListener('click', function () {
+      mode = 'displacement'; draw();
+      var o = objs[document.getElementById('obj').value];
+      document.getElementById('V').textContent = o.V.toFixed(1);
+      attemptRho();
+    });
+    function attemptRho() {
+      var m = parseFloat(document.getElementById('m').textContent);
+      var V = parseFloat(document.getElementById('V').textContent);
+      if (!isNaN(m) && !isNaN(V) && V > 0) {
+        var rho = m/V;
+        document.getElementById('rho').textContent = rho.toFixed(2);
+        var key = document.getElementById('obj').value;
+        U.addRow('tbl', [objs[key].name, m.toFixed(1), V.toFixed(1), rho.toFixed(2)]);
+      }
+    }
+    document.getElementById('resetBtn').addEventListener('click', function () {
+      U.clearTable('tbl');
+      document.getElementById('m').textContent = '—';
+      document.getElementById('V').textContent = '—';
+      document.getElementById('rho').textContent = '—';
+    });
+
+    draw();
+  })();
+  </script>
+</body>
+</html>

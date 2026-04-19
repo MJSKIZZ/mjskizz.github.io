@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>I–V characteristics — AQA RP17</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1><a href="../index.html" style="color: var(--accent);">← All practicals</a></h1>
+    <nav><a href="../index.html">Hub</a></nav>
+  </header>
+  <main class="wrap">
+    <div class="subject-head phys"><span class="chip">Physics · RP17</span><h2 style="margin:0;">I–V characteristics</h2></div>
+    <p class="note">Investigate the I–V characteristics of a fixed resistor, a filament lamp and a diode.</p>
+
+    <div class="prac">
+      <section class="panel">
+        <h3>Simulation</h3>
+        <div class="sim">
+          <canvas id="rig" class="sim-canvas" width="560" height="300"></canvas>
+        </div>
+        <div class="controls">
+          <div class="row"><label>Component</label>
+            <select id="comp">
+              <option value="res">Fixed resistor (10 Ω)</option>
+              <option value="lamp">Filament lamp</option>
+              <option value="diode">Diode</option>
+            </select>
+          </div>
+          <div class="row"><label>Voltage / V</label>
+            <input type="range" id="V" min="-6" max="6" step="0.5" value="0">
+            <span class="val" id="VV">0.0</span>
+          </div>
+          <div class="row">
+            <button class="btn" id="recordBtn">Record reading</button>
+            <button class="btn secondary" id="resetBtn">Reset</button>
+          </div>
+        </div>
+        <div class="readout">
+          <div class="box"><div class="k">V</div><div class="v"><span id="vR">0.00</span> V</div></div>
+          <div class="box"><div class="k">I</div><div class="v"><span id="iR">0.00</span> A</div></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h3>Method</h3>
+        <ol class="method">
+          <li>Set up a circuit with a PSU (d.c., variable voltage), an ammeter in series, a voltmeter in parallel across the component, and the component under test.</li>
+          <li>Set the PSU to 0 V. Record V and I.</li>
+          <li>Increase the voltage in steps (e.g. 0.5 V). Record V and I at each step.</li>
+          <li>Reverse the connections to the component (or use negative voltage) to take readings for negative V.</li>
+          <li>Plot I against V. Include the origin (0,0).</li>
+        </ol>
+
+        <h4>Variables</h4>
+        <div class="vars">
+          <div><b>Independent:</b> Voltage V (V)</div>
+          <div><b>Dependent:</b> Current I (A)</div>
+          <div><b>Control:</b> Same component (don't let filament lamp overheat — turn off briefly between readings), same circuit.</div>
+        </div>
+
+        <h4>Results</h4>
+        <table class="results" id="tbl">
+          <thead><tr><th>Component</th><th>V /V</th><th>I /A</th></tr></thead>
+          <tbody></tbody>
+        </table>
+
+        <h4>I–V graph</h4>
+        <canvas id="graph" class="graph"></canvas>
+        <p class="note">Resistor: straight line through origin. Filament lamp: S-shaped through origin (resistance rises with T). Diode: zero I for negative V; sharp rise above ~0.7 V.</p>
+      </section>
+    </div>
+  </main>
+
+  <script src="../common.js"></script>
+  <script>
+  (function () {
+    var U = window.PracUtil;
+    var canvas = document.getElementById('rig'), ctx = canvas.getContext('2d');
+    U.bindRange('V','VV', function(v){ return parseFloat(v).toFixed(1); });
+    var graph = new U.Graph(document.getElementById('graph'), {
+      xLabel: 'V / V', yLabel: 'I / A',
+      xMin: -6, xMax: 6, yMin: -1, yMax: 1, color: '#3f51b5'
+    });
+
+    function currentFor(comp, V) {
+      if (comp === 'res') return V / 10;
+      if (comp === 'lamp') {
+        var sign = V < 0 ? -1 : 1;
+        var Va = Math.abs(V);
+        // R increases with V (filament heats up)
+        var R = 2 + Va * 1.5;
+        return sign * Va / R;
+      }
+      if (comp === 'diode') {
+        if (V < 0.7) return 0;
+        // exponential-ish rise clipped
+        return Math.min(0.8, 0.02 * Math.exp((V - 0.7) * 2));
+      }
+    }
+
+    function draw() {
+      var W = canvas.width, H = canvas.height;
+      ctx.clearRect(0,0,W,H);
+      ctx.fillStyle = '#0b0d13'; ctx.fillRect(0,0,W,H);
+      // PSU
+      ctx.fillStyle = '#333'; ctx.fillRect(50, 50, 80, 40);
+      ctx.fillStyle = '#e6f3f5'; ctx.font = '13px system-ui';
+      ctx.fillText('PSU', 75, 75);
+      // circuit rectangle
+      ctx.strokeStyle = '#aaa'; ctx.lineWidth = 2;
+      ctx.strokeRect(50, 100, W-100, 120);
+      // ammeter
+      ctx.beginPath(); ctx.arc(180, 100, 18, 0, Math.PI*2); ctx.stroke();
+      ctx.fillStyle = '#e6f3f5'; ctx.fillText('A', 175, 105);
+      // component
+      var comp = document.getElementById('comp').value;
+      var cx = 380, cy = 100;
+      if (comp === 'res') {
+        ctx.fillStyle = '#bca66c';
+        ctx.fillRect(cx - 30, cy - 10, 60, 20);
+      } else if (comp === 'lamp') {
+        ctx.fillStyle = '#111'; ctx.beginPath();
+        ctx.arc(cx, cy, 22, 0, Math.PI*2); ctx.stroke();
+        // glow if I > 0
+        var V = parseFloat(document.getElementById('V').value);
+        var I = Math.abs(currentFor('lamp', V));
+        var glow = Math.min(1, I*1.5);
+        ctx.fillStyle = 'rgba(255,220,120,' + glow + ')';
+        ctx.beginPath(); ctx.arc(cx, cy, 18, 0, Math.PI*2); ctx.fill();
+      } else {
+        // diode triangle
+        ctx.beginPath();
+        ctx.moveTo(cx - 16, cy - 12); ctx.lineTo(cx - 16, cy + 12); ctx.lineTo(cx + 8, cy); ctx.closePath();
+        ctx.fillStyle = '#888'; ctx.fill();
+        ctx.fillRect(cx + 8, cy - 12, 3, 24);
+      }
+      // voltmeter
+      ctx.beginPath(); ctx.arc(cx, 220, 18, 0, Math.PI*2); ctx.stroke();
+      ctx.fillText('V', cx - 4, 225);
+
+      // wires
+      ctx.beginPath(); ctx.moveTo(130, 90); ctx.lineTo(130, 100); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx, 115); ctx.lineTo(cx, 202); ctx.stroke();
+
+      ctx.fillStyle = '#9aa4b2'; ctx.fillText('Component: ' + comp, 20, 28);
+    }
+
+    document.getElementById('V').addEventListener('input', function () {
+      var V = parseFloat(document.getElementById('V').value);
+      var comp = document.getElementById('comp').value;
+      var I = currentFor(comp, V);
+      I *= 0.98 + Math.random()*0.04;
+      document.getElementById('vR').textContent = V.toFixed(2);
+      document.getElementById('iR').textContent = I.toFixed(3);
+      draw();
+    });
+    document.getElementById('comp').addEventListener('change', function () { draw(); graph.reset(); U.clearTable('tbl'); });
+
+    document.getElementById('recordBtn').addEventListener('click', function () {
+      var V = parseFloat(document.getElementById('V').value);
+      var comp = document.getElementById('comp').value;
+      var I = currentFor(comp, V);
+      I *= 0.98 + Math.random()*0.04;
+      U.addRow('tbl', [comp, V.toFixed(2), I.toFixed(3)]);
+      graph.add(V, I);
+    });
+    document.getElementById('resetBtn').addEventListener('click', function () {
+      graph.reset(); U.clearTable('tbl');
+      document.getElementById('vR').textContent = '0.00';
+      document.getElementById('iR').textContent = '0.00';
+    });
+
+    draw();
+  })();
+  </script>
+</body>
+</html>

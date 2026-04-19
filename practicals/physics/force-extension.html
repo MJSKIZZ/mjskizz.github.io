@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Force &amp; extension — AQA RP19</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1><a href="../index.html" style="color: var(--accent);">← All practicals</a></h1>
+    <nav><a href="../index.html">Hub</a></nav>
+  </header>
+  <main class="wrap">
+    <div class="subject-head phys"><span class="chip">Physics · RP19</span><h2 style="margin:0;">Force and extension of a spring (Hooke's Law)</h2></div>
+    <p class="note">F = k × e while the spring obeys Hooke's Law (below its limit of proportionality).</p>
+
+    <div class="prac">
+      <section class="panel">
+        <h3>Simulation</h3>
+        <div class="sim">
+          <canvas id="rig" class="sim-canvas" width="560" height="420"></canvas>
+        </div>
+        <div class="controls">
+          <div class="row"><label>Mass added / g</label>
+            <input type="range" id="m" min="0" max="600" step="100" value="0">
+            <span class="val"><span id="mV">0</span> g</span>
+          </div>
+          <div class="row">
+            <button class="btn" id="readBtn">Read extension</button>
+            <button class="btn secondary" id="resetBtn">Reset</button>
+          </div>
+        </div>
+        <div class="readout">
+          <div class="box"><div class="k">Force / N</div><div class="v"><span id="F">0.00</span></div></div>
+          <div class="box"><div class="k">Length / cm</div><div class="v"><span id="L">10.0</span></div></div>
+          <div class="box"><div class="k">Extension / cm</div><div class="v"><span id="e">0.0</span></div></div>
+          <div class="box"><div class="k">Spring constant k</div><div class="v"><span id="k">—</span> N/m</div></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h3>Method</h3>
+        <ol class="method">
+          <li>Clamp the top of a spring securely. Place a metre ruler vertically next to it.</li>
+          <li>Measure the <em>natural length</em> of the spring (L₀).</li>
+          <li>Add a 100 g mass (= 0.98 N) to the spring. Record the new length.</li>
+          <li>Extension e = L − L₀.</li>
+          <li>Repeat adding masses in 100 g steps up to 600 g. Record extension each time.</li>
+          <li>Plot force (y) against extension (x). Gradient = spring constant k.</li>
+          <li>A straight line through origin shows F ∝ e (Hooke's Law).</li>
+        </ol>
+
+        <h4>Variables</h4>
+        <div class="vars">
+          <div><b>Independent:</b> Force on spring (N)</div>
+          <div><b>Dependent:</b> Extension (m)</div>
+          <div><b>Control:</b> Same spring, same clamp, same ruler, measure from the same point.</div>
+        </div>
+
+        <h4>Results</h4>
+        <table class="results" id="tbl">
+          <thead><tr><th>Mass /g</th><th>F /N</th><th>L /cm</th><th>e /cm</th></tr></thead>
+          <tbody></tbody>
+        </table>
+
+        <h4>Graph: F vs e</h4>
+        <canvas id="graph" class="graph"></canvas>
+      </section>
+    </div>
+  </main>
+
+  <script src="../common.js"></script>
+  <script>
+  (function () {
+    var U = window.PracUtil;
+    var canvas = document.getElementById('rig'), ctx = canvas.getContext('2d');
+    U.bindRange('m','mV');
+    var graph = new U.Graph(document.getElementById('graph'), {
+      xLabel: 'extension /cm', yLabel: 'F /N',
+      xMin: 0, xMax: 20, yMin: 0, yMax: 7, color: '#3f51b5'
+    });
+    var L0 = 10; // natural length cm
+    var kSpring = 25; // N/m
+    var limit = 5.0; // N, then gets soft
+
+    function extensionFor(F) {
+      if (F < limit) return F / kSpring * 100; // cm
+      // past limit: softer
+      return (limit/kSpring + (F - limit)/(kSpring*0.4))*100;
+    }
+
+    function draw() {
+      var W = canvas.width, H = canvas.height;
+      ctx.clearRect(0,0,W,H);
+      ctx.fillStyle = '#0b0d13'; ctx.fillRect(0,0,W,H);
+      // stand + clamp
+      ctx.fillStyle = '#888'; ctx.fillRect(80, 380, 120, 20);
+      ctx.fillRect(130, 40, 8, 340);
+      ctx.fillRect(138, 50, 80, 8);
+      // ruler (vertical)
+      ctx.fillStyle = '#d9c58e'; ctx.fillRect(W - 100, 40, 28, 340);
+      for (var i = 0; i <= 30; i++) {
+        var y = 60 + i*10;
+        ctx.strokeStyle = '#000';
+        ctx.beginPath(); ctx.moveTo(W - 100, y); ctx.lineTo(W - 100 + (i%5===0 ? 12 : 6), y); ctx.stroke();
+        if (i%5===0) {
+          ctx.fillStyle = '#000'; ctx.font = '10px monospace';
+          ctx.fillText(i + '', W - 72, y + 3);
+        }
+      }
+      // spring
+      var mass = parseInt(document.getElementById('m').value, 10); // g
+      var F = mass / 1000 * 9.81;
+      var e = extensionFor(F); // cm
+      var springTop = 60;
+      var springBottom = springTop + (L0 + e) * 10;
+      ctx.strokeStyle = '#ccc'; ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      var coils = 12;
+      var cy = springTop;
+      var amp = 16;
+      for (var c = 0; c < coils; c++) {
+        var y1 = springTop + (springBottom - springTop) * c/coils;
+        var y2 = springTop + (springBottom - springTop) * (c+1)/coils;
+        var x = 220 + (c%2 ? amp : -amp);
+        if (c === 0) ctx.moveTo(220, y1);
+        ctx.lineTo(x, (y1+y2)/2); ctx.lineTo(220, y2);
+      }
+      ctx.stroke();
+      // hook + masses
+      ctx.beginPath(); ctx.moveTo(220, springBottom); ctx.lineTo(220, springBottom + 10); ctx.stroke();
+      var nMasses = mass / 100;
+      for (var i = 0; i < nMasses; i++) {
+        ctx.fillStyle = '#777';
+        ctx.fillRect(200, springBottom + 10 + i*12, 40, 12);
+        ctx.strokeStyle = '#333';
+        ctx.strokeRect(200, springBottom + 10 + i*12, 40, 12);
+      }
+      // label
+      ctx.fillStyle = '#e6f3f5'; ctx.font = '13px system-ui';
+      ctx.fillText('Spring', 220, springTop - 6);
+      ctx.fillText((L0 + e).toFixed(1) + ' cm', 280, (springTop + springBottom)/2);
+    }
+
+    document.getElementById('m').addEventListener('input', draw);
+
+    document.getElementById('readBtn').addEventListener('click', function () {
+      var mass = parseInt(document.getElementById('m').value, 10);
+      var F = mass / 1000 * 9.81;
+      var e = extensionFor(F);
+      var L = L0 + e;
+      document.getElementById('F').textContent = F.toFixed(2);
+      document.getElementById('L').textContent = L.toFixed(1);
+      document.getElementById('e').textContent = e.toFixed(1);
+      if (e > 0) {
+        var kCalc = F / (e/100); // N/m
+        document.getElementById('k').textContent = kCalc.toFixed(1);
+      }
+      U.addRow('tbl', [mass, F.toFixed(2), L.toFixed(1), e.toFixed(1)]);
+      graph.add(e, F);
+    });
+    document.getElementById('resetBtn').addEventListener('click', function () {
+      U.clearTable('tbl'); graph.reset();
+      document.getElementById('m').value = 0;
+      document.getElementById('mV').textContent = '0';
+      document.getElementById('F').textContent = '0.00';
+      document.getElementById('L').textContent = '10.0';
+      document.getElementById('e').textContent = '0.0';
+      document.getElementById('k').textContent = '—';
+      draw();
+    });
+
+    draw();
+  })();
+  </script>
+</body>
+</html>

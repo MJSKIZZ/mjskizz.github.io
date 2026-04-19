@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Electrolysis — AQA RP10</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1><a href="../index.html" style="color: var(--accent);">← All practicals</a></h1>
+    <nav><a href="../index.html">Hub</a></nav>
+  </header>
+  <main class="wrap">
+    <div class="subject-head chem"><span class="chip">Chemistry · RP10</span><h2 style="margin:0;">Electrolysis of aqueous solutions</h2></div>
+    <p class="note">Electrolyse aqueous solutions using inert carbon electrodes. Identify and test the products at each electrode.</p>
+
+    <div class="prac">
+      <section class="panel">
+        <h3>Simulation</h3>
+        <div class="sim">
+          <canvas id="cell" class="sim-canvas" width="560" height="380"></canvas>
+        </div>
+        <div class="controls">
+          <div class="row"><label>Solution</label>
+            <select id="sol">
+              <option value="cuso4">Copper(II) sulfate</option>
+              <option value="nacl">Sodium chloride (brine)</option>
+              <option value="h2so4">Dilute sulfuric acid</option>
+              <option value="nano3">Sodium nitrate</option>
+            </select>
+          </div>
+          <div class="row">
+            <button class="btn" id="onBtn">Switch on</button>
+            <button class="btn secondary" id="offBtn">Switch off</button>
+          </div>
+          <div class="row">
+            <button class="btn secondary" id="testBtn">Test gas / inspect cathode</button>
+          </div>
+        </div>
+        <div class="readout">
+          <div class="box"><div class="k">Cathode (−)</div><div class="v" id="cath">—</div></div>
+          <div class="box"><div class="k">Anode (+)</div><div class="v" id="anode">—</div></div>
+          <div class="box"><div class="k">Test result</div><div class="v" id="test">—</div></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h3>Method</h3>
+        <ol class="method">
+          <li>Half-fill a small beaker with the solution.</li>
+          <li>Put two inert graphite electrodes in the solution, without touching, connected via a low-voltage d.c. power supply.</li>
+          <li>For gas products, cover each electrode with an inverted test tube to collect any gas.</li>
+          <li>Switch on the power and leave for a few minutes.</li>
+          <li>Test any gas collected: <b>pop test</b> for hydrogen, <b>glowing splint</b> for oxygen, <b>damp blue litmus bleaches</b> for chlorine.</li>
+          <li>Inspect the cathode for any metal deposited and note any colour change of the solution.</li>
+        </ol>
+
+        <h4>Rules</h4>
+        <div class="vars">
+          <div><b>Cathode (reduction):</b> Positive metal ion is discharged if it is <em>less reactive</em> than hydrogen. Otherwise hydrogen gas is released.</div>
+          <div><b>Anode (oxidation):</b> If a halide (Cl⁻, Br⁻, I⁻) is present, the halogen is discharged. Otherwise oxygen gas is released from hydroxide ions.</div>
+        </div>
+
+        <h4>Typical results</h4>
+        <table class="results">
+          <thead><tr><th>Solution</th><th>Cathode</th><th>Anode</th></tr></thead>
+          <tbody>
+            <tr><td>CuSO₄</td><td>Copper deposit</td><td>Oxygen</td></tr>
+            <tr><td>NaCl (conc.)</td><td>Hydrogen</td><td>Chlorine</td></tr>
+            <tr><td>H₂SO₄</td><td>Hydrogen</td><td>Oxygen</td></tr>
+            <tr><td>NaNO₃</td><td>Hydrogen</td><td>Oxygen</td></tr>
+          </tbody>
+        </table>
+      </section>
+    </div>
+  </main>
+
+  <script src="../common.js"></script>
+  <script>
+  (function () {
+    var canvas = document.getElementById('cell'), ctx = canvas.getContext('2d');
+    var state = { on: false, sol: 'cuso4', tCath: 0, tAn: 0 };
+
+    var productsByCathode = {
+      cuso4: { label: 'Copper (brown deposit)', gas: false, test: 'Shiny brown Cu coating on cathode.' },
+      nacl: { label: 'Hydrogen', gas: 'H2', test: 'Squeaky pop with a lit splint.' },
+      h2so4: { label: 'Hydrogen', gas: 'H2', test: 'Squeaky pop with a lit splint.' },
+      nano3: { label: 'Hydrogen', gas: 'H2', test: 'Squeaky pop with a lit splint.' }
+    };
+    var productsByAnode = {
+      cuso4: { label: 'Oxygen', gas: 'O2', test: 'Relights a glowing splint.' },
+      nacl: { label: 'Chlorine', gas: 'Cl2', test: 'Bleaches damp blue litmus paper.' },
+      h2so4: { label: 'Oxygen', gas: 'O2', test: 'Relights a glowing splint.' },
+      nano3: { label: 'Oxygen', gas: 'O2', test: 'Relights a glowing splint.' }
+    };
+    var solutionColour = {
+      cuso4: 'rgba(30,110,200,0.6)',
+      nacl: 'rgba(200,230,240,0.35)',
+      h2so4: 'rgba(200,230,240,0.35)',
+      nano3: 'rgba(200,230,240,0.35)'
+    };
+
+    function draw() {
+      var W = canvas.width, H = canvas.height;
+      ctx.clearRect(0,0,W,H);
+      ctx.fillStyle = '#0b0d13'; ctx.fillRect(0,0,W,H);
+      // beaker
+      var bx = W/2, by = 90, bw = 280, bh = 220;
+      ctx.strokeStyle = '#8fe1f2'; ctx.lineWidth = 2;
+      ctx.strokeRect(bx - bw/2, by, bw, bh);
+      // solution
+      // cuso4 fading as Cu deposits
+      var sCol = solutionColour[state.sol];
+      if (state.sol === 'cuso4' && state.on) {
+        var fade = Math.min(1, state.tCath/100);
+        sCol = 'rgba(30,110,200,' + (0.6 - 0.4*fade) + ')';
+      }
+      ctx.fillStyle = sCol;
+      ctx.fillRect(bx - bw/2 + 2, by + 30, bw - 4, bh - 32);
+      // electrodes
+      var lx = bx - 60, rx = bx + 60;
+      // cathode (left, -)
+      ctx.fillStyle = '#222'; ctx.fillRect(lx - 6, 50, 12, 200);
+      // deposited copper
+      if (state.sol === 'cuso4' && state.tCath > 5) {
+        ctx.fillStyle = '#a85a2a';
+        var dep = Math.min(60, state.tCath/2);
+        ctx.fillRect(lx - 10, 250 - dep, 20, dep);
+      }
+      // anode (right, +)
+      ctx.fillStyle = '#222'; ctx.fillRect(rx - 6, 50, 12, 200);
+      // inverted test tubes collecting gas
+      function tube(x, gas) {
+        ctx.strokeStyle = '#ddd'; ctx.lineWidth = 1.5;
+        ctx.strokeRect(x - 16, 40, 32, 100);
+        // water filling + gas at top (gas collected pushes water down)
+        var gasH = gas ? Math.min(70, gas) : 0;
+        ctx.fillStyle = 'rgba(170,210,230,0.55)';
+        ctx.fillRect(x - 15, 40 + gasH, 30, 98 - gasH);
+      }
+      if (productsByCathode[state.sol].gas) tube(lx, state.tCath/2);
+      if (productsByAnode[state.sol].gas) tube(rx, state.tAn/2);
+
+      // power supply wires
+      ctx.strokeStyle = '#d44'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(rx, 50); ctx.lineTo(rx, 20); ctx.lineTo(W - 40, 20); ctx.stroke();
+      ctx.strokeStyle = '#48f';
+      ctx.beginPath(); ctx.moveTo(lx, 50); ctx.lineTo(lx, 20); ctx.lineTo(40, 20); ctx.stroke();
+      // psu box
+      ctx.fillStyle = '#333'; ctx.fillRect(20, 10, 40, 25); ctx.fillRect(W-60, 10, 40, 25);
+      ctx.fillStyle = '#e6f3f5'; ctx.font = '13px system-ui';
+      ctx.fillText('−', 36, 28);
+      ctx.fillText('+', W-42, 28);
+      ctx.fillStyle = state.on ? '#66bb6a' : '#666';
+      ctx.fillRect(W/2 - 22, 8, 44, 25);
+      ctx.fillStyle = '#000'; ctx.font = '12px system-ui';
+      ctx.fillText(state.on ? 'ON' : 'OFF', W/2 - 10, 25);
+
+      // labels
+      ctx.fillStyle = '#e6f3f5'; ctx.font = '13px system-ui';
+      ctx.fillText('Cathode (−)', lx - 40, by + bh + 22);
+      ctx.fillText('Anode (+)', rx - 28, by + bh + 22);
+    }
+
+    var solSel = document.getElementById('sol');
+    solSel.addEventListener('change', function () {
+      state.sol = solSel.value; state.tCath = 0; state.tAn = 0; updateLabels(); draw();
+    });
+
+    function updateLabels() {
+      document.getElementById('cath').textContent = productsByCathode[state.sol].label;
+      document.getElementById('anode').textContent = productsByAnode[state.sol].label;
+    }
+    updateLabels();
+
+    var raf;
+    function tick() {
+      if (state.on) { state.tCath += 1; state.tAn += 1; draw(); }
+      raf = requestAnimationFrame(tick);
+    }
+    tick();
+
+    document.getElementById('onBtn').addEventListener('click', function () { state.on = true; });
+    document.getElementById('offBtn').addEventListener('click', function () { state.on = false; });
+    document.getElementById('testBtn').addEventListener('click', function () {
+      // test the anode product (or cathode for Cu)
+      var t;
+      if (state.sol === 'cuso4') t = productsByCathode.cuso4.test + ' Solution fades blue as Cu²⁺ reduced.';
+      else t = 'Cathode: ' + productsByCathode[state.sol].test + '  Anode: ' + productsByAnode[state.sol].test;
+      document.getElementById('test').textContent = t;
+    });
+
+    draw();
+  })();
+  </script>
+</body>
+</html>

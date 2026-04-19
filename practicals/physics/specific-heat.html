@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Specific heat capacity — AQA RP15</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1><a href="../index.html" style="color: var(--accent);">← All practicals</a></h1>
+    <nav><a href="../index.html">Hub</a></nav>
+  </header>
+  <main class="wrap">
+    <div class="subject-head phys"><span class="chip">Physics · RP15</span><h2 style="margin:0;">Specific heat capacity of a metal block</h2></div>
+    <p class="note">Use an immersion heater to heat a metal block. ΔE = m × c × Δθ so c = ΔE / (m × Δθ).</p>
+
+    <div class="prac">
+      <section class="panel">
+        <h3>Simulation</h3>
+        <div class="sim">
+          <canvas id="rig" class="sim-canvas" width="560" height="360"></canvas>
+        </div>
+        <div class="controls">
+          <div class="row"><label>Material</label>
+            <select id="mat">
+              <option value="al">Aluminium (c = 900)</option>
+              <option value="cu">Copper (c = 385)</option>
+              <option value="fe">Steel (c = 450)</option>
+            </select>
+          </div>
+          <div class="row"><label>Mass of block / kg</label>
+            <input type="number" id="m" value="1.00" step="0.01" min="0.1" max="5">
+          </div>
+          <div class="row"><label>PSU voltage / V</label>
+            <input type="number" id="V" value="12" step="0.5">
+          </div>
+          <div class="row"><label>Current / A</label>
+            <input type="number" id="I" value="4" step="0.1">
+          </div>
+          <div class="row">
+            <button class="btn" id="startBtn">Start heating</button>
+            <button class="btn secondary" id="stopBtn">Stop</button>
+            <button class="btn secondary" id="resetBtn">Reset</button>
+          </div>
+        </div>
+        <div class="readout">
+          <div class="box"><div class="k">Time</div><div class="v"><span id="t">0</span> s</div></div>
+          <div class="box"><div class="k">Energy in</div><div class="v"><span id="E">0</span> J</div></div>
+          <div class="box"><div class="k">Temperature</div><div class="v"><span id="T">20.0</span> °C</div></div>
+          <div class="box"><div class="k">Calculated c</div><div class="v"><span id="c">—</span> J/kg·K</div></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h3>Method</h3>
+        <ol class="method">
+          <li>Find the mass of the metal block (kg).</li>
+          <li>Place the immersion heater into the larger hole and a thermometer into the smaller hole. Add a drop of oil to the thermometer hole for good thermal contact.</li>
+          <li>Wrap the block in insulation (foam or cotton wool).</li>
+          <li>Connect the heater to a 12 V d.c. PSU via an ammeter. Use a voltmeter across the heater.</li>
+          <li>Record the starting temperature. Turn on the heater and start a stopwatch.</li>
+          <li>Record the temperature every 60 s for ~10 min. Record V and I.</li>
+          <li>Energy supplied ΔE = V × I × t. c = ΔE / (m × Δθ). Plot T against t to find the steepest gradient.</li>
+        </ol>
+
+        <h4>Variables</h4>
+        <div class="vars">
+          <div><b>Independent:</b> Time (s)</div>
+          <div><b>Dependent:</b> Temperature (°C)</div>
+          <div><b>Control:</b> Same block, same PSU voltage, same insulation, same ambient temperature.</div>
+        </div>
+
+        <h4>Temperature–time graph</h4>
+        <canvas id="graph" class="graph"></canvas>
+      </section>
+    </div>
+  </main>
+
+  <script src="../common.js"></script>
+  <script>
+  (function () {
+    var U = window.PracUtil;
+    var canvas = document.getElementById('rig'), ctx = canvas.getContext('2d');
+    var mats = { al: 900, cu: 385, fe: 450 };
+    var running = false, t0, t = 0, T = 20, E = 0, raf;
+    var graph = new U.Graph(document.getElementById('graph'), {
+      xLabel: 'Time / s', yLabel: 'T / °C',
+      xMin: 0, xMax: 600, yMin: 20, yMax: 80, color: '#3f51b5'
+    });
+
+    function draw() {
+      var W = canvas.width, H = canvas.height;
+      ctx.clearRect(0,0,W,H);
+      ctx.fillStyle = '#0b0d13'; ctx.fillRect(0,0,W,H);
+      // block
+      var bx = W/2 - 90, by = 120, bw = 180, bh = 150;
+      // hotter = redder
+      var hot = Math.min(1, (T - 20)/60);
+      var r = 160 + hot*80, g = 160 - hot*60, b = 170 - hot*80;
+      ctx.fillStyle = 'rgb(' + Math.round(r) + ',' + Math.round(g) + ',' + Math.round(b) + ')';
+      ctx.fillRect(bx, by, bw, bh);
+      ctx.strokeStyle = '#555'; ctx.lineWidth = 2;
+      ctx.strokeRect(bx, by, bw, bh);
+      // insulation (cotton wool)
+      ctx.strokeStyle = '#e0e0e0'; ctx.lineWidth = 6;
+      ctx.setLineDash([5, 4]);
+      ctx.strokeRect(bx - 10, by - 10, bw + 20, bh + 20);
+      ctx.setLineDash([]);
+      // heater + thermometer
+      ctx.fillStyle = '#777';
+      ctx.fillRect(bx + 50, 40, 14, 100);
+      ctx.fillRect(bx + 120, 40, 8, 100);
+      // thermometer glass bulb/mercury
+      ctx.fillStyle = 'red';
+      var mercuryLen = 6 + hot * 50;
+      ctx.fillRect(bx + 121, 140 - mercuryLen, 6, mercuryLen);
+      // label
+      ctx.fillStyle = '#e6f3f5'; ctx.font = '13px system-ui';
+      ctx.fillText('Immersion heater', bx + 80, 30);
+      ctx.fillText('Thermometer', bx + 70, 15);
+    }
+
+    function step() {
+      if (!running) return;
+      var dt = (Date.now() - t0) / 1000;
+      t0 = Date.now();
+      t += dt;
+      var V = parseFloat(document.getElementById('V').value);
+      var I = parseFloat(document.getElementById('I').value);
+      var m = parseFloat(document.getElementById('m').value);
+      var c = mats[document.getElementById('mat').value];
+      var P = V * I; // power
+      E += P * dt;
+      var dTdt = P / (m * c);
+      T += dTdt * dt;
+      // heat loss to surroundings (crude)
+      T -= 0.001 * (T - 20) * dt;
+      document.getElementById('t').textContent = t.toFixed(0);
+      document.getElementById('E').textContent = E.toFixed(0);
+      document.getElementById('T').textContent = T.toFixed(1);
+      draw();
+      // record every 30s
+      if (Math.floor(t/30) !== (graph.data.length)) {
+        graph.add(Math.floor(t/30)*30, parseFloat(T.toFixed(1)));
+      }
+      // c calculated
+      if (T > 20.5) {
+        var cc = E / (m * (T - 20));
+        document.getElementById('c').textContent = cc.toFixed(0);
+      }
+      raf = requestAnimationFrame(step);
+    }
+
+    document.getElementById('startBtn').addEventListener('click', function () {
+      if (running) return;
+      running = true; t0 = Date.now();
+      step();
+    });
+    document.getElementById('stopBtn').addEventListener('click', function () {
+      running = false;
+    });
+    document.getElementById('resetBtn').addEventListener('click', function () {
+      running = false; t = 0; T = 20; E = 0;
+      document.getElementById('t').textContent = '0';
+      document.getElementById('E').textContent = '0';
+      document.getElementById('T').textContent = '20.0';
+      document.getElementById('c').textContent = '—';
+      graph.reset(); graph.add(0, 20);
+      draw();
+    });
+
+    graph.add(0, 20); draw();
+  })();
+  </script>
+</body>
+</html>

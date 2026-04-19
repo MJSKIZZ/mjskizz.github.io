@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Resistance of a wire — AQA RP16</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1><a href="../index.html" style="color: var(--accent);">← All practicals</a></h1>
+    <nav><a href="../index.html">Hub</a></nav>
+  </header>
+  <main class="wrap">
+    <div class="subject-head phys"><span class="chip">Physics · RP16</span><h2 style="margin:0;">Resistance of a wire vs length</h2></div>
+    <p class="note">Investigate how the resistance of a constantan wire changes with its length. Expect R ∝ L.</p>
+
+    <div class="prac">
+      <section class="panel">
+        <h3>Simulation</h3>
+        <div class="sim">
+          <canvas id="rig" class="sim-canvas" width="560" height="320"></canvas>
+        </div>
+        <div class="controls">
+          <div class="row"><label>Length L / cm</label>
+            <input type="range" id="L" min="10" max="100" step="10" value="40">
+            <span class="val" id="LV">40</span>
+          </div>
+          <div class="row"><label>PSU V / V</label>
+            <input type="number" id="V" value="3.0" step="0.1">
+          </div>
+          <div class="row">
+            <button class="btn" id="measureBtn">Measure</button>
+            <button class="btn secondary" id="resetBtn">Reset</button>
+          </div>
+        </div>
+        <div class="readout">
+          <div class="box"><div class="k">V</div><div class="v"><span id="vR">—</span> V</div></div>
+          <div class="box"><div class="k">I</div><div class="v"><span id="iR">—</span> A</div></div>
+          <div class="box"><div class="k">R = V/I</div><div class="v"><span id="rR">—</span> Ω</div></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h3>Method</h3>
+        <ol class="method">
+          <li>Tape a 1 m length of thin constantan wire along a metre ruler.</li>
+          <li>Connect one end of the wire to the circuit. Use a crocodile clip to contact the wire at a chosen length L.</li>
+          <li>Connect an ammeter in series and a voltmeter in parallel across the tested length of wire.</li>
+          <li>Set the PSU to a low voltage (e.g. 3 V) to avoid the wire getting hot.</li>
+          <li>Record V and I at L = 10, 20, 30, … 100 cm.</li>
+          <li>R = V / I for each length. Plot R against L.</li>
+          <li>A straight line through the origin confirms R ∝ L.</li>
+        </ol>
+
+        <h4>Variables</h4>
+        <div class="vars">
+          <div><b>Independent:</b> Length of wire L (cm)</div>
+          <div><b>Dependent:</b> Resistance R (Ω)</div>
+          <div><b>Control:</b> Same wire material &amp; thickness, same PSU voltage, allow wire to cool between readings.</div>
+        </div>
+
+        <h4>Results</h4>
+        <table class="results" id="tbl">
+          <thead><tr><th>L /cm</th><th>V /V</th><th>I /A</th><th>R /Ω</th></tr></thead>
+          <tbody></tbody>
+        </table>
+
+        <h4>Graph: R vs L</h4>
+        <canvas id="graph" class="graph"></canvas>
+      </section>
+    </div>
+  </main>
+
+  <script src="../common.js"></script>
+  <script>
+  (function () {
+    var U = window.PracUtil;
+    var canvas = document.getElementById('rig'), ctx = canvas.getContext('2d');
+    U.bindRange('L','LV');
+    var graph = new U.Graph(document.getElementById('graph'), {
+      xLabel: 'L /cm', yLabel: 'R /Ω',
+      xMin: 0, xMax: 110, yMin: 0, yMax: 10, color: '#3f51b5'
+    });
+
+    function draw() {
+      var W = canvas.width, H = canvas.height;
+      ctx.clearRect(0,0,W,H);
+      ctx.fillStyle = '#0b0d13'; ctx.fillRect(0,0,W,H);
+      // ruler
+      ctx.fillStyle = '#d9c58e'; ctx.fillRect(30, 150, W-60, 24);
+      ctx.strokeStyle = '#000'; ctx.lineWidth = 1;
+      for (var i = 0; i <= 100; i += 5) {
+        var x = 30 + i*(W-60)/100;
+        ctx.beginPath(); ctx.moveTo(x, 150); ctx.lineTo(x, 150 + (i%10===0 ? 10 : 5)); ctx.stroke();
+      }
+      // wire
+      ctx.strokeStyle = '#bb3'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(30, 142); ctx.lineTo(W-30, 142); ctx.stroke();
+      // crocodile clip
+      var L = parseInt(document.getElementById('L').value, 10);
+      var cx = 30 + L*(W-60)/100;
+      ctx.fillStyle = '#888'; ctx.fillRect(cx - 6, 120, 12, 22);
+      ctx.fillStyle = '#aaa'; ctx.fillRect(cx - 8, 108, 16, 14);
+      // wires to psu
+      ctx.strokeStyle = '#e6e6e6'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(30, 142); ctx.lineTo(30, 60); ctx.lineTo(120, 60); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx, 108); ctx.lineTo(cx, 60); ctx.lineTo(200, 60); ctx.stroke();
+      // ammeter
+      ctx.beginPath(); ctx.arc(170, 60, 18, 0, Math.PI*2); ctx.strokeStyle = '#aaa'; ctx.stroke();
+      ctx.fillStyle = '#e6f3f5'; ctx.font = '12px system-ui';
+      ctx.fillText('A', 166, 65);
+      // voltmeter
+      ctx.beginPath(); ctx.arc(cx + 40, 200, 18, 0, Math.PI*2); ctx.stroke();
+      ctx.fillText('V', cx + 36, 205);
+      // connections V across tested length
+      ctx.beginPath(); ctx.moveTo(30, 170); ctx.lineTo(30, 210); ctx.lineTo(cx + 22, 210); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx, 170); ctx.lineTo(cx, 200); ctx.lineTo(cx + 18, 200); ctx.stroke();
+      // PSU
+      ctx.fillStyle = '#222'; ctx.fillRect(30, 30, 100, 30);
+      ctx.fillStyle = '#e6f3f5'; ctx.fillText('PSU', 60, 50);
+
+      ctx.fillStyle = '#9aa4b2';
+      ctx.fillText('L = ' + L + ' cm', W - 120, 30);
+    }
+
+    document.getElementById('L').addEventListener('input', draw);
+    document.getElementById('measureBtn').addEventListener('click', function () {
+      var L = parseInt(document.getElementById('L').value, 10);
+      var V = parseFloat(document.getElementById('V').value);
+      // Assume wire resistance of 0.08 Ω/cm for thin constantan
+      var R = 0.08 * L;
+      R *= 0.97 + Math.random()*0.06;
+      var I = V / R;
+      document.getElementById('vR').textContent = V.toFixed(2);
+      document.getElementById('iR').textContent = I.toFixed(2);
+      document.getElementById('rR').textContent = R.toFixed(2);
+      U.addRow('tbl', [L, V.toFixed(2), I.toFixed(2), R.toFixed(2)]);
+      graph.add(L, R);
+    });
+    document.getElementById('resetBtn').addEventListener('click', function () {
+      U.clearTable('tbl'); graph.reset();
+      document.getElementById('vR').textContent = '—';
+      document.getElementById('iR').textContent = '—';
+      document.getElementById('rR').textContent = '—';
+    });
+
+    draw();
+  })();
+  </script>
+</body>
+</html>

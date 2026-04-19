@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Food tests — AQA RP3</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1><a href="../index.html" style="color: var(--accent);">← All practicals</a></h1>
+    <nav><a href="../index.html">Hub</a></nav>
+  </header>
+  <main class="wrap">
+    <div class="subject-head bio"><span class="chip">Biology · RP3</span><h2 style="margin:0;">Food tests</h2></div>
+    <p class="note">Use qualitative reagents to test for the presence of starch, sugars, proteins and lipids.</p>
+
+    <div class="prac">
+      <section class="panel">
+        <h3>Simulation</h3>
+        <div class="sim">
+          <canvas id="tubes" class="sim-canvas" width="560" height="340"></canvas>
+        </div>
+        <div class="controls">
+          <div class="row"><label>Choose food</label>
+            <select id="food">
+              <option value="bread">Bread (starch + protein)</option>
+              <option value="milk">Milk (protein + lipid + sugar)</option>
+              <option value="glucose">Glucose solution</option>
+              <option value="eggwhite">Egg white (protein)</option>
+              <option value="oil">Vegetable oil (lipid)</option>
+              <option value="water">Distilled water (control)</option>
+            </select>
+          </div>
+          <div class="row"><label>Choose test</label>
+            <select id="test">
+              <option value="iodine">Iodine — starch</option>
+              <option value="benedict">Benedict's — reducing sugars (heat!)</option>
+              <option value="biuret">Biuret — protein</option>
+              <option value="ethanol">Ethanol emulsion — lipid</option>
+            </select>
+          </div>
+          <div class="row">
+            <button class="btn" id="addBtn">Add reagent</button>
+            <button class="btn secondary" id="heatBtn">Heat in water bath</button>
+            <button class="btn secondary" id="clearBtn">Clear tubes</button>
+          </div>
+        </div>
+        <div class="readout">
+          <div class="box"><div class="k">Observation</div><div class="v" id="obs">—</div></div>
+          <div class="box"><div class="k">Conclusion</div><div class="v" id="conc">—</div></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h3>Method</h3>
+        <ol class="method">
+          <li>Prepare a food sample by grinding in water if solid.</li>
+          <li><b>Starch — iodine test:</b> add a few drops of iodine. <b>Blue-black</b> = starch.</li>
+          <li><b>Reducing sugars — Benedict's:</b> add Benedict's reagent and heat in a water bath for a few minutes. <b>Brick-red</b> precipitate = reducing sugar.</li>
+          <li><b>Protein — biuret:</b> add biuret reagent. <b>Purple/violet</b> = protein.</li>
+          <li><b>Lipids — ethanol emulsion:</b> shake with ethanol, then pour into water. Cloudy <b>white emulsion</b> = lipid.</li>
+          <li>Always include a control (distilled water) for comparison.</li>
+        </ol>
+
+        <h4>Variables</h4>
+        <div class="vars">
+          <div><b>Independent:</b> Food sample and chosen reagent</div>
+          <div><b>Dependent:</b> Colour change observed</div>
+          <div><b>Control:</b> Same reagent volumes, same temperature (where heated), same observation time.</div>
+        </div>
+
+        <h4>Results log</h4>
+        <table class="results" id="tbl">
+          <thead><tr><th>Food</th><th>Test</th><th>Observation</th><th>Conclusion</th></tr></thead>
+          <tbody></tbody>
+        </table>
+
+        <h4>Safety</h4>
+        <p class="note">Wear goggles. Ethanol is flammable — keep away from flames, use a water bath to heat Benedict's, not a direct flame.</p>
+      </section>
+    </div>
+  </main>
+
+  <script src="../common.js"></script>
+  <script>
+  (function () {
+    var U = window.PracUtil;
+    var canvas = document.getElementById('tubes'), ctx = canvas.getContext('2d');
+    // content of each tube (4 tubes, one per test)
+    var tubes = [
+      { test: 'iodine', color: '#d4a93a', added: false, heated: false },
+      { test: 'benedict', color: '#5fb0ff', added: false, heated: false },
+      { test: 'biuret', color: '#9b7ce0', added: false, heated: false },
+      { test: 'ethanol', color: '#e6f3f5', added: false, heated: false }
+    ];
+    var labels = ['Iodine', "Benedict's", 'Biuret', 'Ethanol'];
+
+    // food composition — flags are positive
+    var foods = {
+      bread:   { starch: true,  sugar: false, protein: true,  lipid: false },
+      milk:    { starch: false, sugar: true,  protein: true,  lipid: true  },
+      glucose: { starch: false, sugar: true,  protein: false, lipid: false },
+      eggwhite:{ starch: false, sugar: false, protein: true,  lipid: false },
+      oil:     { starch: false, sugar: false, protein: false, lipid: true  },
+      water:   { starch: false, sugar: false, protein: false, lipid: false }
+    };
+
+    function result(foodKey, testKey, heated) {
+      var f = foods[foodKey];
+      if (testKey === 'iodine') {
+        return f.starch
+          ? { color: '#1b2b5b', obs: 'Blue-black colour', conc: 'Starch present' }
+          : { color: '#d4a93a', obs: 'Stays orange-brown', conc: 'No starch' };
+      }
+      if (testKey === 'benedict') {
+        if (!heated) return { color: '#5fb0ff', obs: 'Blue (not heated yet)', conc: 'Heat to test' };
+        return f.sugar
+          ? { color: '#c64621', obs: 'Brick-red precipitate', conc: 'Reducing sugar present' }
+          : { color: '#5fb0ff', obs: 'Remains blue', conc: 'No reducing sugar' };
+      }
+      if (testKey === 'biuret') {
+        return f.protein
+          ? { color: '#7a3fbf', obs: 'Violet / purple', conc: 'Protein present' }
+          : { color: '#5fa2e0', obs: 'Stays blue', conc: 'No protein' };
+      }
+      if (testKey === 'ethanol') {
+        return f.lipid
+          ? { color: '#eef3f5', obs: 'Cloudy white emulsion', conc: 'Lipid present' }
+          : { color: '#b8d9db', obs: 'Remains clear', conc: 'No lipid' };
+      }
+    }
+
+    function drawTubes() {
+      var W = canvas.width, H = canvas.height;
+      ctx.clearRect(0,0,W,H);
+      ctx.fillStyle = '#0a0c11'; ctx.fillRect(0,0,W,H);
+      // rack
+      ctx.fillStyle = '#2a2d33'; ctx.fillRect(30, H-60, W-60, 30);
+      // tubes
+      for (var i = 0; i < 4; i++) {
+        var x = 90 + i * (W-180)/3;
+        var ty = 40, tw = 64, th = 230;
+        // tube
+        ctx.fillStyle = '#05070a';
+        ctx.fillRect(x-tw/2, ty+20, tw, th-20);
+        ctx.beginPath(); ctx.arc(x, ty+th+20, tw/2, 0, Math.PI, false); ctx.fill();
+        // liquid
+        ctx.fillStyle = tubes[i].color;
+        var ly = ty + th*0.35;
+        ctx.fillRect(x-tw/2+3, ly, tw-6, (ty+th)-ly);
+        ctx.beginPath(); ctx.arc(x, ty+th+18, tw/2-3, 0, Math.PI, false); ctx.fill();
+        // glass reflection
+        ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 2;
+        ctx.strokeRect(x-tw/2, ty+20, tw, th-20);
+        ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+        ctx.beginPath(); ctx.moveTo(x-tw/2+8, ty+40); ctx.lineTo(x-tw/2+8, ty+th-20); ctx.stroke();
+        // label
+        ctx.fillStyle = '#e6f3f5'; ctx.font = '13px system-ui';
+        ctx.textAlign = 'center';
+        ctx.fillText(labels[i], x, H - 10);
+      }
+      ctx.textAlign = 'start';
+    }
+
+    function doAdd() {
+      var foodKey = document.getElementById('food').value;
+      var testKey = document.getElementById('test').value;
+      var idx = ['iodine','benedict','biuret','ethanol'].indexOf(testKey);
+      var heated = (testKey === 'benedict') && tubes[idx].heated;
+      var r = result(foodKey, testKey, heated);
+      tubes[idx].color = r.color;
+      tubes[idx].added = true;
+      document.getElementById('obs').textContent = r.obs;
+      document.getElementById('conc').textContent = r.conc;
+      U.addRow('tbl', [foodKey, labels[idx], r.obs, r.conc]);
+      drawTubes();
+    }
+    function doHeat() {
+      tubes[1].heated = true;
+      // if Benedict was already added, update result
+      var foodKey = document.getElementById('food').value;
+      if (tubes[1].added) {
+        var r = result(foodKey, 'benedict', true);
+        tubes[1].color = r.color;
+        document.getElementById('obs').textContent = r.obs;
+        document.getElementById('conc').textContent = r.conc;
+        drawTubes();
+      }
+    }
+
+    document.getElementById('addBtn').addEventListener('click', doAdd);
+    document.getElementById('heatBtn').addEventListener('click', doHeat);
+    document.getElementById('clearBtn').addEventListener('click', function () {
+      tubes = [
+        { test: 'iodine', color: '#d4a93a', added: false, heated: false },
+        { test: 'benedict', color: '#5fb0ff', added: false, heated: false },
+        { test: 'biuret', color: '#9b7ce0', added: false, heated: false },
+        { test: 'ethanol', color: '#e6f3f5', added: false, heated: false }
+      ];
+      U.clearTable('tbl');
+      document.getElementById('obs').textContent = '—';
+      document.getElementById('conc').textContent = '—';
+      drawTubes();
+    });
+
+    drawTubes();
+  })();
+  </script>
+</body>
+</html>

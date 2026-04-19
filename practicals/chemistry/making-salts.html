@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Making a salt — AQA RP8</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1><a href="../index.html" style="color: var(--accent);">← All practicals</a></h1>
+    <nav><a href="../index.html">Hub</a></nav>
+  </header>
+  <main class="wrap">
+    <div class="subject-head chem"><span class="chip">Chemistry · RP8</span><h2 style="margin:0;">Preparing copper sulfate crystals</h2></div>
+    <p class="note">Prepare a pure, dry sample of hydrated copper(II) sulfate (CuSO₄·5H₂O) from copper(II) oxide (an insoluble base) and sulfuric acid.</p>
+
+    <div class="prac">
+      <section class="panel">
+        <h3>Simulation</h3>
+        <div class="sim">
+          <canvas id="lab" class="sim-canvas" width="560" height="360"></canvas>
+        </div>
+        <div class="controls">
+          <div class="row">
+            <button class="btn" id="step1">1. Warm acid</button>
+            <button class="btn" id="step2" disabled>2. Add CuO</button>
+            <button class="btn" id="step3" disabled>3. Filter</button>
+          </div>
+          <div class="row">
+            <button class="btn" id="step4" disabled>4. Evaporate</button>
+            <button class="btn" id="step5" disabled>5. Crystallise</button>
+            <button class="btn secondary" id="resetBtn">Reset</button>
+          </div>
+        </div>
+        <div class="readout">
+          <div class="box"><div class="k">Current step</div><div class="v" id="stepV">Ready</div></div>
+          <div class="box"><div class="k">Observation</div><div class="v" id="obs">—</div></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h3>Equation</h3>
+        <p class="note">CuO(s) + H₂SO₄(aq) → CuSO₄(aq) + H₂O(l)</p>
+
+        <h3>Method</h3>
+        <ol class="method">
+          <li>Measure 25 cm³ of dilute sulfuric acid into a beaker and warm gently.</li>
+          <li>Add a spatula of copper(II) oxide and stir. Keep adding in excess (the solid at the bottom will not all react) so you know all the acid is used up.</li>
+          <li>Filter the mixture to remove the unreacted CuO, leaving a clear blue copper sulfate solution.</li>
+          <li>Pour the filtrate into an evaporating basin and heat over a water bath to evaporate some water (until a hot-saturated solution forms).</li>
+          <li>Leave the solution to cool and crystallise. Filter and pat the crystals dry between filter paper.</li>
+        </ol>
+
+        <h4>Variables / Considerations</h4>
+        <div class="vars">
+          <div><b>Independent:</b> The reactants used (acid + insoluble base).</div>
+          <div><b>Dependent:</b> Mass of pure salt produced.</div>
+          <div><b>Control:</b> Same concentration of acid; CuO added in excess; slow crystallisation for large pure crystals.</div>
+        </div>
+
+        <h4>Yield calculation</h4>
+        <div class="row"><label>Mass of crystals / g</label><input type="number" id="mass" value="3.80" step="0.01"></div>
+        <div class="row"><label>Theoretical mass / g</label><input type="number" id="theo" value="5.00" step="0.01"></div>
+        <div class="row"><label></label>
+          <button class="btn" id="calcBtn">% yield</button>
+          <span class="val" id="yieldV">—</span>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="../common.js"></script>
+  <script>
+  (function () {
+    var canvas = document.getElementById('lab'), ctx = canvas.getContext('2d');
+    var state = { stage: 0 }; // 0 start, 1 warmed, 2 reacted, 3 filtered, 4 evaporated, 5 crystallised
+
+    function draw() {
+      var W = canvas.width, H = canvas.height;
+      ctx.clearRect(0,0,W,H);
+      ctx.fillStyle = '#0b0d13'; ctx.fillRect(0,0,W,H);
+      // bench
+      ctx.fillStyle = '#1e232d'; ctx.fillRect(0,H-50,W,50);
+
+      // Different scene per stage
+      if (state.stage <= 2) {
+        // beaker with acid
+        drawBeaker(W/2, 200, state.stage);
+        if (state.stage >= 1) {
+          // tripod + flame
+          drawFlame(W/2, 280);
+        }
+      } else if (state.stage === 3) {
+        // filtration
+        drawFiltration();
+      } else {
+        // evaporation / crystallisation
+        drawEvaporation(state.stage);
+      }
+    }
+
+    function drawBeaker(cx, cy, stage) {
+      var bw = 120, bh = 150;
+      ctx.strokeStyle = '#8fe1f2'; ctx.lineWidth = 3;
+      ctx.strokeRect(cx - bw/2, cy - bh/2, bw, bh);
+      // liquid: colorless -> blue as reaction proceeds
+      var liquidColor;
+      if (stage < 1) liquidColor = 'rgba(180,220,230,0.4)';
+      else if (stage < 2) liquidColor = 'rgba(140,220,230,0.55)';
+      else liquidColor = 'rgba(50,110,200,0.85)';
+      ctx.fillStyle = liquidColor;
+      ctx.fillRect(cx - bw/2 + 3, cy - bh/2 + 40, bw - 6, bh - 43);
+      // black CuO powder at bottom if added
+      if (stage >= 2) {
+        ctx.fillStyle = '#111';
+        ctx.fillRect(cx - bw/2 + 6, cy + bh/2 - 18, bw - 12, 14);
+      }
+      // steam
+      if (stage >= 1) {
+        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        for (var i = 0; i < 5; i++) {
+          ctx.beginPath(); ctx.arc(cx - 30 + i*15, cy - bh/2 - 10 - (i%2)*8, 5 + (i%3)*2, 0, Math.PI*2); ctx.fill();
+        }
+      }
+      ctx.fillStyle = '#e6f3f5'; ctx.font = '14px system-ui';
+      ctx.fillText('H₂SO₄' + (stage >= 2 ? ' + CuO' : ''), cx - 40, cy - bh/2 - 20);
+    }
+    function drawFlame(cx, by) {
+      ctx.fillStyle = '#666'; ctx.fillRect(cx - 40, by, 80, 6);
+      ctx.strokeStyle = '#666'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(cx-30, by+6); ctx.lineTo(cx-50, by+70); ctx.moveTo(cx+30,by+6); ctx.lineTo(cx+50, by+70); ctx.stroke();
+      // flame
+      var g = ctx.createRadialGradient(cx, by+30, 2, cx, by+30, 40);
+      g.addColorStop(0, '#ffd86b'); g.addColorStop(1, 'rgba(255,77,22,0.2)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(cx - 25, by+10);
+      ctx.quadraticCurveTo(cx, by - 30, cx + 25, by+10);
+      ctx.closePath(); ctx.fill();
+    }
+    function drawFiltration() {
+      var W = canvas.width;
+      // clamp + funnel
+      ctx.strokeStyle = '#ccc'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(100, 80); ctx.lineTo(300, 80); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(300, 80); ctx.lineTo(300, 60); ctx.stroke();
+      // funnel
+      ctx.fillStyle = 'rgba(140,220,230,0.25)';
+      ctx.beginPath();
+      ctx.moveTo(220, 120); ctx.lineTo(320, 120); ctx.lineTo(280, 180); ctx.lineTo(260, 180);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#8fe1f2'; ctx.lineWidth = 2; ctx.stroke();
+      // residue (black)
+      ctx.fillStyle = '#111';
+      ctx.beginPath();
+      ctx.moveTo(240, 140); ctx.lineTo(300, 140); ctx.lineTo(275, 175); ctx.lineTo(265, 175); ctx.closePath(); ctx.fill();
+      // stem
+      ctx.fillStyle = '#8fe1f2'; ctx.fillRect(268, 180, 4, 30);
+      // dripping blue filtrate
+      ctx.fillStyle = 'rgba(50,110,200,0.85)';
+      ctx.beginPath(); ctx.arc(270, 220, 4, 0, Math.PI*2); ctx.fill();
+      // conical flask
+      ctx.fillStyle = 'rgba(50,110,200,0.55)';
+      ctx.beginPath();
+      ctx.moveTo(230, 240); ctx.lineTo(310, 240); ctx.lineTo(340, 310); ctx.lineTo(200, 310); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#8fe1f2'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = '#e6f3f5'; ctx.font = '13px system-ui';
+      ctx.fillText('CuO residue', 340, 150);
+      ctx.fillText('CuSO₄(aq) filtrate', 340, 280);
+    }
+    function drawEvaporation(stage) {
+      var W = canvas.width;
+      // evaporating basin
+      ctx.fillStyle = '#ddd';
+      ctx.beginPath();
+      ctx.ellipse(W/2, 200, 100, 20, 0, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(W/2 - 100, 200); ctx.quadraticCurveTo(W/2, 260, W/2 + 100, 200); ctx.stroke();
+      ctx.fillStyle = '#aaa'; ctx.fill();
+      // liquid (blue) decreasing with stage 4->5
+      if (stage === 4) {
+        ctx.fillStyle = 'rgba(30,90,200,0.9)';
+        ctx.beginPath(); ctx.ellipse(W/2, 200, 85, 14, 0, 0, Math.PI*2); ctx.fill();
+        drawFlame(W/2, 280);
+      } else {
+        // crystals
+        for (var i = 0; i < 18; i++) {
+          ctx.fillStyle = '#2a6ed8';
+          ctx.save(); ctx.translate(W/2 - 70 + (i*8), 196 + (i%3)*3);
+          ctx.rotate(Math.random()*Math.PI);
+          ctx.fillRect(-5,-5, 10, 10); ctx.restore();
+        }
+      }
+      ctx.fillStyle = '#e6f3f5'; ctx.font = '14px system-ui';
+      ctx.fillText(stage === 4 ? 'Heat to a hot saturated solution' : 'Cool & crystallise', W/2 - 90, 120);
+    }
+
+    function setStep(s, label, obs) {
+      state.stage = s;
+      document.getElementById('stepV').textContent = label;
+      document.getElementById('obs').textContent = obs;
+      // enable next
+      ['step1','step2','step3','step4','step5'].forEach(function (id, i) {
+        document.getElementById(id).disabled = (i !== s);
+      });
+      draw();
+    }
+
+    document.getElementById('step1').addEventListener('click', function () {
+      setStep(1, 'Warming acid', 'Sulfuric acid warming — steam rises.');
+    });
+    document.getElementById('step2').addEventListener('click', function () {
+      setStep(2, 'Adding CuO', 'Solution turns blue. Some black CuO unreacted = acid used up.');
+    });
+    document.getElementById('step3').addEventListener('click', function () {
+      setStep(3, 'Filtering', 'Unreacted CuO caught by filter. Blue filtrate collected.');
+    });
+    document.getElementById('step4').addEventListener('click', function () {
+      setStep(4, 'Evaporating', 'Water evaporates — solution becomes saturated and deeper blue.');
+    });
+    document.getElementById('step5').addEventListener('click', function () {
+      setStep(5, 'Crystallising', 'Blue CuSO₄·5H₂O crystals form on cooling. Filter & pat dry.');
+    });
+
+    document.getElementById('resetBtn').addEventListener('click', function () {
+      setStep(0, 'Ready', '—');
+    });
+
+    document.getElementById('calcBtn').addEventListener('click', function () {
+      var m = parseFloat(document.getElementById('mass').value);
+      var t = parseFloat(document.getElementById('theo').value);
+      if (!m || !t) return;
+      document.getElementById('yieldV').textContent = ((m/t)*100).toFixed(1) + ' %';
+    });
+
+    setStep(0, 'Ready', '—');
+  })();
+  </script>
+</body>
+</html>

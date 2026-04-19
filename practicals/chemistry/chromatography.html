@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chromatography — AQA RP13</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1><a href="../index.html" style="color: var(--accent);">← All practicals</a></h1>
+    <nav><a href="../index.html">Hub</a></nav>
+  </header>
+  <main class="wrap">
+    <div class="subject-head chem"><span class="chip">Chemistry · RP13</span><h2 style="margin:0;">Paper chromatography</h2></div>
+    <p class="note">Separate a mixture of food dyes using paper chromatography. Calculate Rf = distance travelled by spot / distance travelled by solvent.</p>
+
+    <div class="prac">
+      <section class="panel">
+        <h3>Simulation</h3>
+        <div class="sim">
+          <canvas id="paper" class="sim-canvas" width="560" height="400"></canvas>
+        </div>
+        <div class="controls">
+          <div class="row"><label>Spot at position</label>
+            <select id="pos">
+              <option value="0">A</option>
+              <option value="1">B</option>
+              <option value="2">C</option>
+              <option value="3">D (unknown)</option>
+            </select>
+            <select id="dye">
+              <option value="red">Red dye</option>
+              <option value="yellow">Yellow dye</option>
+              <option value="blue">Blue dye</option>
+              <option value="green">Green ink (mix)</option>
+              <option value="orange">Orange ink (mix)</option>
+            </select>
+            <button class="btn secondary" id="spotBtn">Apply spot</button>
+          </div>
+          <div class="row">
+            <button class="btn" id="runBtn">Run chromatogram</button>
+            <button class="btn secondary" id="resetBtn">Reset</button>
+          </div>
+        </div>
+        <div class="readout">
+          <div class="box"><div class="k">Solvent front</div><div class="v"><span id="sf">0.0</span> cm</div></div>
+          <div class="box"><div class="k">Rf of last measured spot</div><div class="v"><span id="rf">—</span></div></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h3>Method</h3>
+        <ol class="method">
+          <li>Draw a pencil line 2 cm from the bottom of a piece of chromatography paper.</li>
+          <li>Put small spots of each dye on the line (A, B, C, D).</li>
+          <li>Place the paper in a beaker with a small amount of solvent (water). The solvent must be <em>below</em> the pencil line.</li>
+          <li>Cover with a lid so solvent doesn't evaporate.</li>
+          <li>Let the solvent rise up the paper. Remove before it reaches the top.</li>
+          <li>Mark the solvent front with pencil. Measure the distance travelled by the solvent and each spot.</li>
+          <li>Rf = distance travelled by spot ÷ distance travelled by solvent. Rf is between 0 and 1.</li>
+        </ol>
+
+        <h4>Variables</h4>
+        <div class="vars">
+          <div><b>Independent:</b> Identity of the dye / mixture</div>
+          <div><b>Dependent:</b> Distance travelled by the spot (and therefore Rf)</div>
+          <div><b>Control:</b> Same solvent, same paper, same run time, pencil line (pencil doesn't dissolve).</div>
+        </div>
+
+        <h4>Rf values</h4>
+        <table class="results" id="tbl">
+          <thead><tr><th>Position</th><th>Dye</th><th>Spot /cm</th><th>Front /cm</th><th>Rf</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </section>
+    </div>
+  </main>
+
+  <script src="../common.js"></script>
+  <script>
+  (function () {
+    var U = window.PracUtil;
+    var canvas = document.getElementById('paper'), ctx = canvas.getContext('2d');
+
+    var dyes = {
+      red:    [{ color: '#d32f2f', rf: 0.35 }],
+      yellow: [{ color: '#fdd835', rf: 0.75 }],
+      blue:   [{ color: '#1e88e5', rf: 0.55 }],
+      green:  [{ color: '#fdd835', rf: 0.75 }, { color: '#1e88e5', rf: 0.55 }],
+      orange: [{ color: '#d32f2f', rf: 0.35 }, { color: '#fdd835', rf: 0.75 }]
+    };
+    // spots: per position 0..3, array of { color, rf }
+    var spots = [null, null, null, null];
+    var front = 0; // 0 .. 1 fraction of paper
+    var running = false;
+
+    function draw() {
+      var W = canvas.width, H = canvas.height;
+      ctx.clearRect(0,0,W,H);
+      ctx.fillStyle = '#0b0d13'; ctx.fillRect(0,0,W,H);
+      // beaker outline
+      var px = 70, py = 20, pw = W - 140, ph = H - 60;
+      ctx.strokeStyle = '#8fe1f2'; ctx.lineWidth = 2;
+      ctx.strokeRect(px - 20, py + 10, pw + 40, ph);
+      // paper
+      ctx.fillStyle = '#f6f2e6';
+      ctx.fillRect(px, py, pw, ph);
+      ctx.strokeStyle = '#c7b98f'; ctx.lineWidth = 1; ctx.strokeRect(px, py, pw, ph);
+      // pencil line (bottom, y = py + ph - 40)
+      var startY = py + ph - 40;
+      ctx.strokeStyle = '#333'; ctx.setLineDash([4,3]);
+      ctx.beginPath(); ctx.moveTo(px + 10, startY); ctx.lineTo(px + pw - 10, startY); ctx.stroke();
+      ctx.setLineDash([]);
+      // solvent at bottom of beaker
+      var solventY = py + ph - 20;
+      ctx.fillStyle = 'rgba(140,210,230,0.5)';
+      ctx.fillRect(px - 18, solventY, pw + 36, 20);
+      // solvent front line (moving up)
+      var travelMax = startY - py - 20; // px
+      var frontY = startY - front * travelMax;
+      ctx.strokeStyle = '#c6d2de'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(px + 10, frontY); ctx.lineTo(px + pw - 10, frontY); ctx.stroke();
+      // wet area
+      ctx.fillStyle = 'rgba(140,210,230,0.08)';
+      ctx.fillRect(px + 2, frontY, pw - 4, startY - frontY + 2);
+
+      // spots + travelled
+      for (var i = 0; i < 4; i++) {
+        var x = px + pw * (i + 1)/5;
+        ctx.fillStyle = '#666'; ctx.font = '12px system-ui';
+        ctx.fillText(['A','B','C','D'][i], x - 5, startY + 14);
+        if (!spots[i]) continue;
+        spots[i].forEach(function (sp) {
+          // distance travelled: front * rf * travelMax
+          var dist = Math.min(travelMax, front * sp.rf * travelMax);
+          var y = startY - dist;
+          ctx.fillStyle = sp.color;
+          ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI*2); ctx.fill();
+          // faint trail
+          ctx.strokeStyle = sp.color; ctx.globalAlpha = 0.35;
+          ctx.beginPath(); ctx.moveTo(x, y + 2); ctx.lineTo(x, startY); ctx.stroke();
+          ctx.globalAlpha = 1;
+        });
+      }
+
+      document.getElementById('sf').textContent = (front * 8).toFixed(1); // assume 8cm travel
+    }
+
+    document.getElementById('spotBtn').addEventListener('click', function () {
+      var p = parseInt(document.getElementById('pos').value, 10);
+      var d = document.getElementById('dye').value;
+      spots[p] = dyes[d].slice();
+      draw();
+    });
+
+    var raf;
+    document.getElementById('runBtn').addEventListener('click', function () {
+      if (running) return; running = true;
+      var start = Date.now();
+      function step() {
+        var t = (Date.now() - start) / 1000;
+        front = Math.min(1, t/6);
+        draw();
+        if (front < 1) raf = requestAnimationFrame(step);
+        else {
+          running = false;
+          // record Rf of whatever spots exist
+          U.clearTable('tbl');
+          for (var i = 0; i < 4; i++) {
+            if (!spots[i]) continue;
+            spots[i].forEach(function (sp, k) {
+              var dist = 8 * sp.rf; // cm
+              var rf = (dist/8).toFixed(2);
+              U.addRow('tbl', [['A','B','C','D'][i], sp.color, dist.toFixed(1), '8.0', rf]);
+              document.getElementById('rf').textContent = rf;
+            });
+          }
+        }
+      }
+      step();
+    });
+
+    document.getElementById('resetBtn').addEventListener('click', function () {
+      cancelAnimationFrame(raf); running = false; front = 0;
+      spots = [null, null, null, null]; U.clearTable('tbl');
+      document.getElementById('rf').textContent = '—';
+      document.getElementById('sf').textContent = '0.0';
+      draw();
+    });
+
+    draw();
+  })();
+  </script>
+</body>
+</html>

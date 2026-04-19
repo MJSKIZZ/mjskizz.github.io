@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Temperature changes — AQA RP11</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1><a href="../index.html" style="color: var(--accent);">← All practicals</a></h1>
+    <nav><a href="../index.html">Hub</a></nav>
+  </header>
+  <main class="wrap">
+    <div class="subject-head chem"><span class="chip">Chemistry · RP11</span><h2 style="margin:0;">Energy change in neutralisation</h2></div>
+    <p class="note">Investigate the effect of varying the volume of NaOH on the temperature change when reacted with a fixed volume of HCl.</p>
+
+    <div class="prac">
+      <section class="panel">
+        <h3>Simulation</h3>
+        <div class="sim">
+          <canvas id="cup" class="sim-canvas" width="560" height="360"></canvas>
+        </div>
+        <div class="controls">
+          <div class="row"><label>HCl volume / cm³</label>
+            <input type="number" id="vh" value="30" min="10" max="50" step="5">
+          </div>
+          <div class="row"><label>NaOH volume / cm³</label>
+            <input type="range" id="vn" min="0" max="50" step="5" value="10">
+            <span class="val" id="vnV">10</span>
+          </div>
+          <div class="row"><label>Starting temp / °C</label>
+            <input type="number" id="t0" value="20" min="15" max="25">
+          </div>
+          <div class="row">
+            <button class="btn" id="runBtn">Mix &amp; record</button>
+            <button class="btn secondary" id="resetBtn">Reset</button>
+          </div>
+        </div>
+        <div class="readout">
+          <div class="box"><div class="k">Max temp</div><div class="v"><span id="tmax">—</span> °C</div></div>
+          <div class="box"><div class="k">ΔT</div><div class="v"><span id="dt">—</span> °C</div></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h3>Method</h3>
+        <ol class="method">
+          <li>Use a measuring cylinder to put 30 cm³ of HCl into a polystyrene cup (stood in a beaker for insulation).</li>
+          <li>Measure the starting temperature of the HCl with a thermometer.</li>
+          <li>Measure 5 cm³ of NaOH and add it to the cup. Stir with the thermometer.</li>
+          <li>Record the <em>maximum</em> temperature reached.</li>
+          <li>Repeat adding in 5 cm³ portions of NaOH (total 10, 15, 20, 25, 30, 35, 40 cm³) and record the max temperature each time (or repeat in fresh cups).</li>
+          <li>Plot temperature rise against NaOH volume.</li>
+        </ol>
+
+        <h4>Variables</h4>
+        <div class="vars">
+          <div><b>Independent:</b> Volume of NaOH (cm³)</div>
+          <div><b>Dependent:</b> Maximum temperature of the mixture (°C)</div>
+          <div><b>Control:</b> Volume &amp; concentration of HCl, same concentrations of NaOH, same cup/thermometer.</div>
+        </div>
+
+        <h4>Results</h4>
+        <table class="results" id="tbl">
+          <thead><tr><th>V(NaOH) /cm³</th><th>T₀ /°C</th><th>T_max /°C</th><th>ΔT /°C</th></tr></thead>
+          <tbody></tbody>
+        </table>
+
+        <h4>Graph: ΔT vs V(NaOH)</h4>
+        <canvas id="graph" class="graph"></canvas>
+        <p class="note">ΔT increases linearly until the acid is neutralised, then decreases as extra (cold) alkali cools the mixture. Peak = end point.</p>
+      </section>
+    </div>
+  </main>
+
+  <script src="../common.js"></script>
+  <script>
+  (function () {
+    var U = window.PracUtil;
+    var canvas = document.getElementById('cup'), ctx = canvas.getContext('2d');
+    U.bindRange('vn','vnV');
+    var graph = new U.Graph(document.getElementById('graph'), {
+      xLabel: 'V(NaOH) / cm³', yLabel: 'ΔT / °C',
+      xMin: 0, xMax: 50, yMin: 0, yMax: 15, color: '#ff9800'
+    });
+
+    function dT(vh, vn) {
+      // rise per mol neutralised; max when vn = vh (1:1 concs)
+      var moles = Math.min(vh, vn) * 0.001; // approx
+      var heat = moles * 57000; // J (enthalpy of neutralisation)
+      var m = (vh + vn); // g of mixture (assume 1g/cm^3)
+      if (m === 0) return 0;
+      var dt = heat / (m * 4.18);
+      return dt * 0.95 + (Math.random()-0.5)*0.3;
+    }
+
+    function drawCup(vh, vn, dt) {
+      var W = canvas.width, H = canvas.height;
+      ctx.clearRect(0,0,W,H);
+      ctx.fillStyle = '#0b0d13'; ctx.fillRect(0,0,W,H);
+      // polystyrene cup
+      ctx.fillStyle = '#f2f2f5';
+      ctx.beginPath();
+      ctx.moveTo(W/2 - 70, 80); ctx.lineTo(W/2 + 70, 80);
+      ctx.lineTo(W/2 + 90, 260); ctx.lineTo(W/2 - 90, 260); ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#aaa'; ctx.lineWidth = 2; ctx.stroke();
+      // liquid
+      var vol = vh + vn;
+      var level = 80 + (180 * (1 - Math.min(1, vol/100)));
+      // colour based on temperature
+      var r = 80 + Math.min(170, dt*12);
+      ctx.fillStyle = 'rgba(' + r + ', 150, 220, 0.6)';
+      ctx.beginPath();
+      ctx.moveTo(W/2 - 72 + (level-80)*0.1, level);
+      ctx.lineTo(W/2 + 72 - (level-80)*0.1, level);
+      ctx.lineTo(W/2 + 90, 260); ctx.lineTo(W/2 - 90, 260); ctx.closePath();
+      ctx.fill();
+      // thermometer
+      ctx.fillStyle = '#eee'; ctx.fillRect(W/2 - 4, 30, 8, 220);
+      ctx.fillStyle = 'red';
+      var tempFill = Math.min(200, 30 + dt*8);
+      ctx.fillRect(W/2 - 2, 250 - tempFill, 4, tempFill);
+      ctx.fillStyle = '#e6f3f5'; ctx.font = '13px system-ui';
+      ctx.fillText('HCl ' + vh + ' cm³ + NaOH ' + vn + ' cm³', 20, 28);
+    }
+
+    var lastDT = 0;
+    document.getElementById('runBtn').addEventListener('click', function () {
+      var vh = parseFloat(document.getElementById('vh').value);
+      var vn = parseFloat(document.getElementById('vn').value);
+      var t0 = parseFloat(document.getElementById('t0').value);
+      var dt = dT(vh, vn);
+      lastDT = dt;
+      drawCup(vh, vn, dt);
+      var tmax = t0 + dt;
+      document.getElementById('tmax').textContent = tmax.toFixed(1);
+      document.getElementById('dt').textContent = dt.toFixed(1);
+      U.addRow('tbl', [vn, t0.toFixed(1), tmax.toFixed(1), dt.toFixed(1)]);
+      graph.add(vn, dt);
+    });
+
+    document.getElementById('resetBtn').addEventListener('click', function () {
+      U.clearTable('tbl'); graph.reset();
+      document.getElementById('tmax').textContent = '—';
+      document.getElementById('dt').textContent = '—';
+      drawCup(30, 0, 0);
+    });
+
+    drawCup(30, 0, 0);
+  })();
+  </script>
+</body>
+</html>
