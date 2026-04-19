@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Playlist Converter — Spotify to anywhere</title>
+  <link rel="stylesheet" href="style.css">
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a href="../index.html" class="back">← Home</a>
+    <h1>Playlist Converter</h1>
+    <p class="tagline">Paste a Spotify playlist, jump to the same tracks on Apple Music, YouTube Music, Tidal, Deezer, Amazon Music, or SoundCloud. Export CSV/JSON for anything else.</p>
+  </header>
+
+  <main>
+    <!-- Setup: one-time Spotify Client ID -->
+    <section id="setupCard" class="card hidden">
+      <h2>One-time setup</h2>
+      <p>This site talks to Spotify directly from your browser (no server). You need a free Spotify Developer app so the API knows who's asking.</p>
+      <ol class="steps">
+        <li>Open the <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener">Spotify Developer Dashboard</a> and click <strong>Create app</strong>.</li>
+        <li>Name it anything. For <strong>Redirect URI</strong>, paste:
+          <code id="redirectUriDisplay"></code>
+          <button type="button" class="ghost small" id="copyRedirect">Copy</button>
+        </li>
+        <li>Tick the <strong>Web API</strong> checkbox, save, then open the app and copy the <strong>Client ID</strong>.</li>
+      </ol>
+      <label for="clientIdInput">Client ID</label>
+      <input id="clientIdInput" type="text" autocomplete="off" spellcheck="false" placeholder="e.g. 3a8b2c...">
+      <div class="row">
+        <button id="saveClientId">Save &amp; continue</button>
+        <button class="ghost" id="cancelSetup" type="button">Cancel</button>
+      </div>
+      <p class="hint">Stored only in your browser's localStorage. Clear it anytime with the Reset button below.</p>
+    </section>
+
+    <!-- Auth: connect Spotify -->
+    <section id="authCard" class="card hidden">
+      <h2>Connect Spotify</h2>
+      <p>Sign in to read playlists. We only ask for read-only playlist access — no write, no library changes.</p>
+      <div class="row">
+        <button id="loginBtn">Log in with Spotify</button>
+        <button class="ghost" id="editClientId" type="button">Change Client ID</button>
+      </div>
+    </section>
+
+    <!-- Input: playlist URL -->
+    <section id="playlistCard" class="card hidden">
+      <h2>Paste a Spotify playlist</h2>
+      <div class="row">
+        <input id="playlistInput" type="text" placeholder="https://open.spotify.com/playlist/..." autocomplete="off">
+        <button id="loadBtn">Load</button>
+      </div>
+      <p class="hint">Works with playlist URLs, <code>spotify:playlist:…</code> URIs, or a raw playlist ID. Public playlists, or private ones on your own account.</p>
+      <div class="row subtle">
+        <button class="ghost small" id="logoutBtn" type="button">Log out</button>
+        <button class="ghost small" id="resetBtn" type="button">Reset all</button>
+      </div>
+    </section>
+
+    <!-- Status / errors -->
+    <p id="status" class="status hidden" role="status" aria-live="polite"></p>
+
+    <!-- Playlist output -->
+    <section id="playlistView" class="card hidden">
+      <div class="playlist-head">
+        <img id="playlistCover" alt="" width="96" height="96">
+        <div>
+          <h2 id="playlistName">—</h2>
+          <p id="playlistMeta" class="muted">—</p>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <div class="target-group" role="group" aria-label="Target service">
+          <span class="label">Jump to:</span>
+          <label><input type="radio" name="target" value="apple" checked> Apple Music</label>
+          <label><input type="radio" name="target" value="ytmusic"> YouTube Music</label>
+          <label><input type="radio" name="target" value="youtube"> YouTube</label>
+          <label><input type="radio" name="target" value="tidal"> Tidal</label>
+          <label><input type="radio" name="target" value="deezer"> Deezer</label>
+          <label><input type="radio" name="target" value="amazon"> Amazon Music</label>
+          <label><input type="radio" name="target" value="soundcloud"> SoundCloud</label>
+        </div>
+        <div class="actions">
+          <button class="ghost small" id="openAllBtn" type="button" title="Opens a tab per track in the selected service. You'll need to allow popups.">Open all</button>
+          <button class="ghost small" id="copyListBtn" type="button">Copy list</button>
+          <button class="ghost small" id="downloadCsvBtn" type="button">Download CSV</button>
+          <button class="ghost small" id="downloadJsonBtn" type="button">Download JSON</button>
+        </div>
+      </div>
+
+      <ol id="trackList" class="tracks"></ol>
+    </section>
+
+    <section class="card notice">
+      <h2>Why not direct imports?</h2>
+      <p>Apple Music, Tidal, and Amazon Music require server-signed tokens or commercial partner access that a static site can't safely ship. YouTube/Google OAuth is possible but adds another setup step. So instead, this tool hands you per-track deep links — click each to add it on the target service, or export the list for tools like Soundiiz / TuneMyMusic / Spotlistr if you want batch import.</p>
+    </section>
+  </main>
+
+  <footer>
+    <p>Nothing you paste leaves your browser except the calls to Spotify's own API and the search links you click.</p>
+  </footer>
+</body>
+</html>
