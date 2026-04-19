@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Osmosis — AQA RP2</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1><a href="../index.html" style="color: var(--accent);">← All practicals</a></h1>
+    <nav><a href="../index.html">Hub</a></nav>
+  </header>
+  <main class="wrap">
+    <div class="subject-head bio"><span class="chip">Biology · RP2</span><h2 style="margin:0;">Osmosis in potato tissue</h2></div>
+    <p class="note">Effect of a range of sugar solution concentrations on the percentage change in mass of potato chips.</p>
+
+    <div class="prac">
+      <section class="panel">
+        <h3>Simulation</h3>
+        <div class="sim">
+          <canvas id="lab" class="sim-canvas" width="560" height="320"></canvas>
+        </div>
+        <div class="controls">
+          <div class="row"><label>Sugar concentration</label>
+            <input type="range" id="conc" min="0" max="1" step="0.05" value="0.2">
+            <span class="val"><span id="concV">0.20</span> mol/dm³</span>
+          </div>
+          <div class="row"><label>Starting mass / g</label>
+            <input type="number" id="m0" value="3.00" step="0.01" min="1" max="10">
+          </div>
+          <div class="row"><label>Time in solution</label>
+            <input type="range" id="time" min="0" max="60" step="5" value="30">
+            <span class="val"><span id="timeV">30</span> min</span>
+          </div>
+          <div class="row">
+            <button class="btn" id="runBtn">Run experiment</button>
+            <button class="btn secondary" id="resetBtn">Reset</button>
+          </div>
+        </div>
+        <div class="readout">
+          <div class="box"><div class="k">Final mass</div><div class="v"><span id="m1">—</span> g</div></div>
+          <div class="box"><div class="k">Change in mass</div><div class="v"><span id="dm">—</span> g</div></div>
+          <div class="box"><div class="k">% change</div><div class="v"><span id="pct">—</span> %</div></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h3>Method</h3>
+        <ol class="method">
+          <li>Cut several potato chips of equal size. Blot dry and record each starting mass.</li>
+          <li>Prepare sugar solutions of different concentrations (0.0, 0.2, 0.4, 0.6, 0.8, 1.0 mol/dm³).</li>
+          <li>Place one chip into each concentration in labelled boiling tubes.</li>
+          <li>Leave for the same length of time (e.g. 30 min).</li>
+          <li>Remove, blot dry and re-weigh each chip.</li>
+          <li>Calculate percentage change in mass: (m₁ − m₀)/m₀ × 100.</li>
+          <li>Plot % change in mass against concentration. The isotonic point is where % change = 0.</li>
+        </ol>
+
+        <h4>Variables</h4>
+        <div class="vars">
+          <div><b>Independent:</b> Sugar concentration (mol/dm³)</div>
+          <div><b>Dependent:</b> % change in mass</div>
+          <div><b>Control:</b> Volume of solution, time in solution, temperature, potato variety, size of chips.</div>
+        </div>
+
+        <h4>Results</h4>
+        <table class="results" id="tbl">
+          <thead><tr><th>Conc. /mol dm⁻³</th><th>m₀ /g</th><th>m₁ /g</th><th>% change</th></tr></thead>
+          <tbody></tbody>
+        </table>
+
+        <h4>Graph: % mass change vs concentration</h4>
+        <canvas id="graph" class="graph"></canvas>
+        <p class="note">Draw a line of best fit. The concentration where the line crosses 0 % is isotonic with the potato cell sap (~0.35 mol/dm³).</p>
+      </section>
+    </div>
+  </main>
+
+  <script src="../common.js"></script>
+  <script>
+  (function () {
+    var U = window.PracUtil;
+    var canvas = document.getElementById('lab'), ctx = canvas.getContext('2d');
+    var conc = document.getElementById('conc');
+    var time = document.getElementById('time');
+    var m0Input = document.getElementById('m0');
+    U.bindRange('conc','concV', function(v){ return parseFloat(v).toFixed(2); });
+    U.bindRange('time','timeV');
+
+    var graph = new U.Graph(document.getElementById('graph'), {
+      xLabel: 'Concentration / mol dm⁻³', yLabel: '% change in mass',
+      xMin: 0, xMax: 1, yMin: -30, yMax: 20, color: '#4caf50'
+    });
+
+    function finalMass(m0, c, t) {
+      // isotonic ~0.35 mol/dm^3
+      var rate = (0.35 - c) * 0.0015; // fractional per minute
+      var pct = rate * t * 100;
+      // add small noise
+      pct += (Math.random()-0.5) * 1.5;
+      return { m1: m0 * (1 + pct/100), pct: pct };
+    }
+
+    function drawLab(pct) {
+      var W = canvas.width, H = canvas.height;
+      ctx.clearRect(0,0,W,H);
+      // bench
+      ctx.fillStyle = '#1a1d24'; ctx.fillRect(0,H-40,W,40);
+      // boiling tube
+      var tx = W/2, ty = 40, tw = 80, th = 220;
+      ctx.fillStyle = '#0b6c78';
+      ctx.fillRect(tx-tw/2, ty+20, tw, th-20);
+      ctx.beginPath(); ctx.arc(tx, ty+th+20, tw/2, 0, Math.PI, false); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 2;
+      ctx.strokeRect(tx-tw/2, ty+20, tw, th-20);
+      // chip: swell if pct > 0, shrink if pct < 0
+      var scale = 1 + (pct/100) * 2;
+      scale = Math.max(0.6, Math.min(1.4, scale));
+      var cw = 20*scale, ch = 90*scale;
+      ctx.fillStyle = pct >= 0 ? '#d4b06a' : '#c79a50';
+      ctx.strokeStyle = '#8a6a2c'; ctx.lineWidth = 1.5;
+      ctx.fillRect(tx - cw/2, ty + th/2, cw, ch);
+      ctx.strokeRect(tx - cw/2, ty + th/2, cw, ch);
+      // label
+      ctx.fillStyle = '#e6f3f5'; ctx.font = '14px system-ui';
+      ctx.fillText('Sugar solution', 20, 28);
+      ctx.fillStyle = '#9aa4b2';
+      ctx.fillText('Potato chip', tx - 30, ty + th + 40);
+    }
+
+    document.getElementById('runBtn').addEventListener('click', function () {
+      var c = parseFloat(conc.value), t = parseFloat(time.value), m0 = parseFloat(m0Input.value);
+      if (!m0 || m0 <= 0) return;
+      var r = finalMass(m0, c, t);
+      document.getElementById('m1').textContent = r.m1.toFixed(2);
+      document.getElementById('dm').textContent = (r.m1 - m0).toFixed(2);
+      document.getElementById('pct').textContent = r.pct.toFixed(1);
+      drawLab(r.pct);
+      U.addRow('tbl', [c.toFixed(2), m0.toFixed(2), r.m1.toFixed(2), r.pct.toFixed(1)]);
+      graph.add(c, r.pct);
+    });
+
+    document.getElementById('resetBtn').addEventListener('click', function () {
+      U.clearTable('tbl'); graph.reset(); drawLab(0);
+      document.getElementById('m1').textContent = '—';
+      document.getElementById('dm').textContent = '—';
+      document.getElementById('pct').textContent = '—';
+    });
+
+    drawLab(0);
+  })();
+  </script>
+</body>
+</html>

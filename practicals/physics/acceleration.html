@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Acceleration — AQA RP20</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1><a href="../index.html" style="color: var(--accent);">← All practicals</a></h1>
+    <nav><a href="../index.html">Hub</a></nav>
+  </header>
+  <main class="wrap">
+    <div class="subject-head phys"><span class="chip">Physics · RP20</span><h2 style="margin:0;">Effect of force on acceleration (F = ma)</h2></div>
+    <p class="note">Use a trolley on a track connected over a pulley to a falling mass. Measure acceleration at different forces.</p>
+
+    <div class="prac">
+      <section class="panel">
+        <h3>Simulation</h3>
+        <div class="sim">
+          <canvas id="rig" class="sim-canvas" width="560" height="360"></canvas>
+        </div>
+        <div class="controls">
+          <div class="row"><label>Trolley mass / kg</label>
+            <input type="number" id="M" value="1.0" step="0.1" min="0.2" max="3">
+          </div>
+          <div class="row"><label>Falling mass / g</label>
+            <input type="range" id="f" min="50" max="500" step="50" value="100">
+            <span class="val"><span id="fV">100</span> g</span>
+          </div>
+          <div class="row">
+            <button class="btn" id="runBtn">Run trial</button>
+            <button class="btn secondary" id="resetBtn">Reset</button>
+          </div>
+          <p class="note">Total (accelerated) mass = trolley + all 500 g of masses (keep them on the trolley; just move them to the hanger to change the force).</p>
+        </div>
+        <div class="readout">
+          <div class="box"><div class="k">Driving force / N</div><div class="v"><span id="F">—</span></div></div>
+          <div class="box"><div class="k">Acceleration / m/s²</div><div class="v"><span id="a">—</span></div></div>
+          <div class="box"><div class="k">Gradient ≈ 1/m</div><div class="v"><span id="g">—</span></div></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h3>Method</h3>
+        <ol class="method">
+          <li>Set up a trolley on a horizontal runway with a pulley at the end. Connect it via a string to a mass hanger.</li>
+          <li>Record the total mass being accelerated (trolley + all masses, including those on the hanger).</li>
+          <li>Use two light gates or a ticker-timer to measure the acceleration of the trolley.</li>
+          <li>Start with 100 g on the hanger. The force is weight of the hanger = mg.</li>
+          <li>Release the trolley and record acceleration.</li>
+          <li>Transfer 100 g from the trolley to the hanger (total mass stays the same). Repeat.</li>
+          <li>Plot a graph of acceleration (y) against force (x). Gradient = 1/mass.</li>
+        </ol>
+
+        <h4>Variables</h4>
+        <div class="vars">
+          <div><b>Independent:</b> Weight on hanger (force) / N</div>
+          <div><b>Dependent:</b> Acceleration / m s⁻²</div>
+          <div><b>Control:</b> Total mass accelerated, same track, friction-compensated, straight line of pull.</div>
+        </div>
+
+        <h4>Results</h4>
+        <table class="results" id="tbl">
+          <thead><tr><th>F /N</th><th>a /m s⁻²</th></tr></thead>
+          <tbody></tbody>
+        </table>
+
+        <h4>Graph: a vs F</h4>
+        <canvas id="graph" class="graph"></canvas>
+      </section>
+    </div>
+  </main>
+
+  <script src="../common.js"></script>
+  <script>
+  (function () {
+    var U = window.PracUtil;
+    var canvas = document.getElementById('rig'), ctx = canvas.getContext('2d');
+    U.bindRange('f','fV');
+    var graph = new U.Graph(document.getElementById('graph'), {
+      xLabel: 'F /N', yLabel: 'a / m s⁻²',
+      xMin: 0, xMax: 6, yMin: 0, yMax: 6, color: '#3f51b5'
+    });
+
+    var trolleyX = 60; var raf;
+
+    function draw() {
+      var W = canvas.width, H = canvas.height;
+      ctx.clearRect(0,0,W,H);
+      ctx.fillStyle = '#0b0d13'; ctx.fillRect(0,0,W,H);
+      // runway
+      ctx.fillStyle = '#555'; ctx.fillRect(30, 200, W-60, 20);
+      // pulley
+      ctx.fillStyle = '#333';
+      ctx.beginPath(); ctx.arc(W-40, 180, 14, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle = '#aaa'; ctx.beginPath(); ctx.arc(W-40, 180, 10, 0, Math.PI*2); ctx.stroke();
+      // trolley
+      var tx = trolleyX, ty = 170;
+      ctx.fillStyle = '#e0e0e0'; ctx.fillRect(tx - 30, ty, 60, 30);
+      ctx.fillStyle = '#333';
+      ctx.beginPath(); ctx.arc(tx - 18, ty + 32, 6, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(tx + 18, ty + 32, 6, 0, Math.PI*2); ctx.fill();
+      // string
+      ctx.strokeStyle = '#ccc'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(tx + 30, ty + 10); ctx.lineTo(W - 40, 180); ctx.stroke();
+      // hanging weight
+      var hangerY = 180 + (320 - trolleyX * 2.3); // falls as trolley moves
+      hangerY = Math.min(340, Math.max(200, hangerY));
+      ctx.beginPath(); ctx.moveTo(W - 40, 180); ctx.lineTo(W - 40, hangerY); ctx.stroke();
+      // mass hanger with plates
+      var massG = parseInt(document.getElementById('f').value, 10);
+      var plates = Math.max(1, massG / 100);
+      for (var i = 0; i < plates; i++) {
+        ctx.fillStyle = '#777';
+        ctx.fillRect(W - 56, hangerY + i*10, 32, 9);
+        ctx.strokeStyle = '#333';
+        ctx.strokeRect(W - 56, hangerY + i*10, 32, 9);
+      }
+      // light gates
+      ctx.fillStyle = '#c00'; ctx.fillRect(180, 160, 4, 50);
+      ctx.fillRect(380, 160, 4, 50);
+      ctx.fillStyle = '#e6f3f5'; ctx.font = '12px system-ui';
+      ctx.fillText('Gate 1', 170, 156);
+      ctx.fillText('Gate 2', 370, 156);
+    }
+
+    document.getElementById('f').addEventListener('input', draw);
+    document.getElementById('runBtn').addEventListener('click', function () {
+      var M = parseFloat(document.getElementById('M').value); // trolley mass kg
+      var mHang = parseInt(document.getElementById('f').value, 10) / 1000; // kg
+      var F = mHang * 9.81;
+      // total accelerated mass: trolley + mHang + any extras (we assume trolley mass includes extras)
+      var totalM = M + mHang;
+      var a = F / totalM;
+      // small friction correction
+      a *= 0.95;
+      document.getElementById('F').textContent = F.toFixed(2);
+      document.getElementById('a').textContent = a.toFixed(2);
+      U.addRow('tbl', [F.toFixed(2), a.toFixed(2)]);
+      graph.add(F, a);
+      document.getElementById('g').textContent = (1/totalM).toFixed(2);
+      // animate
+      trolleyX = 60;
+      var t0 = Date.now();
+      cancelAnimationFrame(raf);
+      (function anim () {
+        var t = (Date.now() - t0) / 1000;
+        trolleyX = 60 + 0.5 * a * t * t * 80;
+        draw();
+        if (trolleyX < canvas.width - 80) raf = requestAnimationFrame(anim);
+      })();
+    });
+    document.getElementById('resetBtn').addEventListener('click', function () {
+      trolleyX = 60; draw();
+      U.clearTable('tbl'); graph.reset();
+      document.getElementById('F').textContent = '—';
+      document.getElementById('a').textContent = '—';
+      document.getElementById('g').textContent = '—';
+    });
+
+    draw();
+  })();
+  </script>
+</body>
+</html>

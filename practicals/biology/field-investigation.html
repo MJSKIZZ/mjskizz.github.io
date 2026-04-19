@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Field investigation — AQA RP7</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1><a href="../index.html" style="color: var(--accent);">← All practicals</a></h1>
+    <nav><a href="../index.html">Hub</a></nav>
+  </header>
+  <main class="wrap">
+    <div class="subject-head bio"><span class="chip">Biology · RP7</span><h2 style="margin:0;">Field investigation — quadrats &amp; transects</h2></div>
+    <p class="note">Measure the population size of daisies in a field using random sampling with a quadrat.</p>
+
+    <div class="prac">
+      <section class="panel">
+        <h3>Simulation</h3>
+        <div class="sim">
+          <canvas id="field" class="sim-canvas" width="560" height="360" style="cursor: crosshair;"></canvas>
+        </div>
+        <div class="controls">
+          <div class="row"><label>Sampling method</label>
+            <select id="method">
+              <option value="random">Random sampling</option>
+              <option value="transect">Transect (along shade gradient)</option>
+            </select>
+          </div>
+          <div class="row">
+            <button class="btn" id="sampleBtn">Take random sample</button>
+            <button class="btn secondary" id="resetBtn">Reset</button>
+          </div>
+          <p class="note">Click in the field to place a quadrat manually, or press Take random sample.</p>
+        </div>
+        <div class="readout">
+          <div class="box"><div class="k">Samples</div><div class="v"><span id="n">0</span></div></div>
+          <div class="box"><div class="k">Mean per quadrat</div><div class="v"><span id="mean">—</span></div></div>
+          <div class="box"><div class="k">Est. total in field (200 m²)</div><div class="v"><span id="total">—</span></div></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h3>Method — random sampling</h3>
+        <ol class="method">
+          <li>Lay two long tape measures at right angles along two edges of the sample area.</li>
+          <li>Use a random number generator to choose coordinates and place a 0.5 m × 0.5 m quadrat.</li>
+          <li>Count the number of the species (e.g. daisies) inside the quadrat.</li>
+          <li>Repeat for at least 10 samples to get a reliable mean.</li>
+          <li>Mean per m² = mean per quadrat ÷ area of quadrat.</li>
+          <li>Estimate total population: mean per m² × total area of field.</li>
+        </ol>
+        <h3>Method — transect (belt)</h3>
+        <ol class="method">
+          <li>Stretch a line across a gradient (e.g. sun → shade).</li>
+          <li>Place a quadrat at regular intervals along the line.</li>
+          <li>Count the species in each quadrat.</li>
+          <li>Plot distribution vs distance to see how abiotic factors affect populations.</li>
+        </ol>
+
+        <h4>Variables</h4>
+        <div class="vars">
+          <div><b>Independent:</b> Position of the quadrat (sampling)</div>
+          <div><b>Dependent:</b> Number of individuals of the species</div>
+          <div><b>Control:</b> Quadrat size, same species identification, same time of year.</div>
+        </div>
+
+        <h4>Results</h4>
+        <table class="results" id="tbl">
+          <thead><tr><th>Sample</th><th>x</th><th>y</th><th>Daisies</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </section>
+    </div>
+  </main>
+
+  <script src="../common.js"></script>
+  <script>
+  (function () {
+    var U = window.PracUtil;
+    var canvas = document.getElementById('field'), ctx = canvas.getContext('2d');
+    var W = canvas.width, H = canvas.height;
+
+    // seed daisies into a 20x20 grid (each "cell" ~ 0.5m)
+    var cols = 20, rows = 13;
+    var daisies = [];
+    for (var i = 0; i < 280; i++) {
+      daisies.push({ x: Math.random()*W, y: Math.random()*(H-40) + 20, r: 3 + Math.random()*2 });
+    }
+    // shade gradient — fewer daisies on right (transect dep.)
+    daisies = daisies.filter(function (d) { return Math.random() > d.x / W * 0.6; });
+
+    var quadrats = [];
+    var sampleCount = 0;
+
+    function draw() {
+      ctx.clearRect(0,0,W,H);
+      // grass gradient (sun to shade L->R)
+      var grad = ctx.createLinearGradient(0,0,W,0);
+      grad.addColorStop(0, '#3d6b2f');
+      grad.addColorStop(1, '#1f3a1c');
+      ctx.fillStyle = grad; ctx.fillRect(0,0,W,H);
+      // daisies
+      daisies.forEach(function (d) {
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#ffd54f';
+        ctx.beginPath(); ctx.arc(d.x, d.y, d.r*0.4, 0, Math.PI*2); ctx.fill();
+      });
+      // quadrats
+      quadrats.forEach(function (q, i) {
+        ctx.strokeStyle = 'rgba(255,200,100,0.9)'; ctx.lineWidth = 2;
+        ctx.strokeRect(q.x, q.y, q.s, q.s);
+        ctx.fillStyle = 'rgba(255,200,100,0.1)';
+        ctx.fillRect(q.x, q.y, q.s, q.s);
+        ctx.fillStyle = '#fff'; ctx.font = '12px system-ui';
+        ctx.fillText('#' + (i+1) + ' = ' + q.count, q.x + 4, q.y + 14);
+      });
+      // axis labels
+      ctx.fillStyle = '#e6f3f5'; ctx.font = '12px system-ui';
+      ctx.fillText('SUN', 6, 14); ctx.fillText('SHADE', W - 44, 14);
+    }
+
+    function countInQuadrat(x, y, s) {
+      var n = 0;
+      daisies.forEach(function (d) {
+        if (d.x >= x && d.x <= x+s && d.y >= y && d.y <= y+s) n++;
+      });
+      return n;
+    }
+
+    function addQuadrat(x, y) {
+      var s = 60; // 0.5m equivalent in pixels
+      var count = countInQuadrat(x, y, s);
+      sampleCount++;
+      quadrats.push({ x: x, y: y, s: s, count: count });
+      U.addRow('tbl', [sampleCount, (x/W*10).toFixed(1) + ' m', (y/H*6.5).toFixed(1) + ' m', count]);
+      var total = quadrats.reduce(function(a,q){return a+q.count;}, 0);
+      var mean = total / quadrats.length;
+      document.getElementById('n').textContent = quadrats.length;
+      document.getElementById('mean').textContent = mean.toFixed(1);
+      // area of quadrat = 0.25 m², so per m² = mean / 0.25 = mean * 4
+      // field assumed 200 m² (10 × 20 m), total = mean * 4 * 200
+      var est = Math.round(mean * 4 * 200);
+      document.getElementById('total').textContent = est;
+      draw();
+    }
+
+    document.getElementById('sampleBtn').addEventListener('click', function () {
+      var method = document.getElementById('method').value;
+      var s = 60;
+      if (method === 'random') {
+        var x = Math.random() * (W - s);
+        var y = Math.random() * (H - s - 20) + 10;
+        addQuadrat(x, y);
+      } else {
+        // transect: evenly spaced along x centre
+        var i = quadrats.length;
+        var x = 20 + (i * (W - s - 40) / 9);
+        var y = H/2 - s/2;
+        if (x + s <= W) addQuadrat(x, y);
+      }
+    });
+
+    canvas.addEventListener('click', function (e) {
+      var r = canvas.getBoundingClientRect();
+      var sx = canvas.width / r.width, sy = canvas.height / r.height;
+      var x = (e.clientX - r.left) * sx - 30, y = (e.clientY - r.top) * sy - 30;
+      addQuadrat(x, y);
+    });
+
+    document.getElementById('resetBtn').addEventListener('click', function () {
+      quadrats = []; sampleCount = 0; U.clearTable('tbl');
+      document.getElementById('n').textContent = '0';
+      document.getElementById('mean').textContent = '—';
+      document.getElementById('total').textContent = '—';
+      draw();
+    });
+
+    draw();
+  })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Enzymes — AQA RP4</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1><a href="../index.html" style="color: var(--accent);">← All practicals</a></h1>
+    <nav><a href="../index.html">Hub</a></nav>
+  </header>
+  <main class="wrap">
+    <div class="subject-head bio"><span class="chip">Biology · RP4</span><h2 style="margin:0;">Effect of pH on amylase activity</h2></div>
+    <p class="note">Measure time taken for amylase to completely break down starch using iodine as an indicator. Optimum pH for amylase ≈ 7.</p>
+
+    <div class="prac">
+      <section class="panel">
+        <h3>Simulation</h3>
+        <div class="sim">
+          <canvas id="plate" class="sim-canvas" width="560" height="340"></canvas>
+        </div>
+        <div class="controls">
+          <div class="row"><label>pH of buffer</label>
+            <input type="range" id="ph" min="2" max="12" step="1" value="7">
+            <span class="val" id="phV">7</span>
+          </div>
+          <div class="row"><label>Temperature / °C</label>
+            <input type="range" id="temp" min="10" max="60" step="5" value="35">
+            <span class="val" id="tempV">35</span>
+          </div>
+          <div class="row">
+            <button class="btn" id="startBtn">Start timer</button>
+            <button class="btn secondary" id="resetBtn">Reset</button>
+          </div>
+        </div>
+        <div class="readout">
+          <div class="box"><div class="k">Time taken</div><div class="v"><span id="t">0.0</span> s</div></div>
+          <div class="box"><div class="k">Rate (1/time)</div><div class="v"><span id="r">—</span> s⁻¹</div></div>
+          <div class="box"><div class="k">Status</div><div class="v" id="status">Idle</div></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h3>Method</h3>
+        <ol class="method">
+          <li>Place a drop of iodine into each well of a spotting tile.</li>
+          <li>In a test tube, mix 2 cm³ of starch solution with 1 cm³ of amylase solution and 1 cm³ of buffer at a chosen pH.</li>
+          <li>Start a stopwatch.</li>
+          <li>Every 30 seconds take a drop of the mixture and add it to a well with iodine.</li>
+          <li>Iodine turns blue-black if starch is still present, and stays orange once the starch has been broken down.</li>
+          <li>Record the time taken for the iodine to no longer change colour.</li>
+          <li>Repeat for buffers of pH 2, 4, 6, 7, 8, 10, 12. Plot rate (1/time) against pH.</li>
+        </ol>
+
+        <h4>Variables</h4>
+        <div class="vars">
+          <div><b>Independent:</b> pH of buffer</div>
+          <div><b>Dependent:</b> Time for starch to be fully broken down</div>
+          <div><b>Control:</b> Concentration &amp; volume of amylase, starch, temperature, same drop size.</div>
+        </div>
+
+        <h4>Results</h4>
+        <table class="results" id="tbl">
+          <thead><tr><th>pH</th><th>Time / s</th><th>Rate / s⁻¹</th></tr></thead>
+          <tbody></tbody>
+        </table>
+
+        <h4>Graph: rate vs pH</h4>
+        <canvas id="graph" class="graph"></canvas>
+      </section>
+    </div>
+  </main>
+
+  <script src="../common.js"></script>
+  <script>
+  (function () {
+    var U = window.PracUtil;
+    var canvas = document.getElementById('plate'), ctx = canvas.getContext('2d');
+    U.bindRange('ph','phV'); U.bindRange('temp','tempV');
+    var graph = new U.Graph(document.getElementById('graph'), {
+      xLabel: 'pH', yLabel: 'Rate (1/s)',
+      xMin: 1, xMax: 13, yMin: 0, yMax: 0.05, color: '#4caf50'
+    });
+
+    var running = false, t0 = 0, raf, wells = [];
+
+    function rateFunc(ph, temp) {
+      // Gaussian around optimum pH7, T37
+      var gP = Math.exp(-Math.pow((ph-7)/2.2, 2));
+      var gT = Math.exp(-Math.pow((temp-37)/10, 2));
+      // At T>50 denaturation, reduce drastically
+      if (temp >= 55) gT *= 0.2;
+      var maxRate = 0.04; // s^-1
+      return Math.max(0.002, maxRate * gP * gT);
+    }
+
+    function drawPlate(progress, ph) {
+      var W = canvas.width, H = canvas.height;
+      ctx.clearRect(0,0,W,H);
+      ctx.fillStyle = '#111318'; ctx.fillRect(0,0,W,H);
+      // spotting tile
+      ctx.fillStyle = '#eef2f5'; ctx.fillRect(30, 40, W-60, H-80);
+      // 8 wells
+      for (var i = 0; i < 8; i++) {
+        var cx = 80 + i * ((W-160)/7), cy = H/2 - 20;
+        ctx.fillStyle = '#cfd6d9';
+        ctx.beginPath(); ctx.arc(cx, cy, 28, 0, Math.PI*2); ctx.fill();
+        // the fraction of wells filled so far
+        var filled = Math.floor(progress * 8);
+        if (i < filled - 1) {
+          // fully broken down - iodine stays orange
+          ctx.fillStyle = '#d48a2a';
+        } else if (i === filled - 1) {
+          // transitioning
+          ctx.fillStyle = '#7a3e80';
+        } else {
+          // still has starch - blue-black
+          ctx.fillStyle = '#1a1f4a';
+        }
+        ctx.beginPath(); ctx.arc(cx, cy, 20, 0, Math.PI*2); ctx.fill();
+        // label seconds
+        ctx.fillStyle = '#333'; ctx.font = '12px system-ui';
+        ctx.textAlign = 'center';
+        ctx.fillText((i*30) + 's', cx, cy + 50);
+      }
+      ctx.textAlign = 'start';
+      ctx.fillStyle = '#333'; ctx.font = '13px system-ui';
+      ctx.fillText('Iodine spotting tile — pH ' + ph, 36, 28);
+    }
+
+    function animate() {
+      var dt = (Date.now() - t0) / 1000;
+      var ph = parseInt(document.getElementById('ph').value, 10);
+      var temp = parseInt(document.getElementById('temp').value, 10);
+      var rate = rateFunc(ph, temp);
+      var totalTime = 1 / rate; // seconds for complete breakdown
+      var progress = Math.min(1, dt / totalTime);
+      document.getElementById('t').textContent = dt.toFixed(1);
+      drawPlate(progress, ph);
+      if (progress >= 1) {
+        running = false;
+        document.getElementById('status').textContent = 'Complete';
+        document.getElementById('r').textContent = (1/dt).toFixed(4);
+        U.addRow('tbl', [ph, dt.toFixed(1), (1/dt).toFixed(4)]);
+        graph.add(ph, 1/dt);
+        return;
+      }
+      raf = requestAnimationFrame(animate);
+    }
+
+    document.getElementById('startBtn').addEventListener('click', function () {
+      if (running) return;
+      running = true;
+      t0 = Date.now();
+      document.getElementById('status').textContent = 'Running…';
+      document.getElementById('r').textContent = '—';
+      animate();
+    });
+    document.getElementById('resetBtn').addEventListener('click', function () {
+      cancelAnimationFrame(raf); running = false;
+      document.getElementById('t').textContent = '0.0';
+      document.getElementById('r').textContent = '—';
+      document.getElementById('status').textContent = 'Idle';
+      U.clearTable('tbl'); graph.reset();
+      drawPlate(0, document.getElementById('ph').value);
+    });
+
+    drawPlate(0, 7);
+  })();
+  </script>
+</body>
+</html>

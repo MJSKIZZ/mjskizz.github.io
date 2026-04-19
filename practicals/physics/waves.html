@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Waves — AQA RP21</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1><a href="../index.html" style="color: var(--accent);">← All practicals</a></h1>
+    <nav><a href="../index.html">Hub</a></nav>
+  </header>
+  <main class="wrap">
+    <div class="subject-head phys"><span class="chip">Physics · RP21</span><h2 style="margin:0;">Waves in a ripple tank</h2></div>
+    <p class="note">Measure the frequency, wavelength and speed of water ripples. Verify v = f × λ.</p>
+
+    <div class="prac">
+      <section class="panel">
+        <h3>Simulation</h3>
+        <div class="sim">
+          <canvas id="tank" class="sim-canvas" width="560" height="340"></canvas>
+        </div>
+        <div class="controls">
+          <div class="row"><label>Frequency / Hz</label>
+            <input type="range" id="f" min="2" max="20" step="1" value="8">
+            <span class="val" id="fV">8</span>
+          </div>
+          <div class="row">
+            <button class="btn" id="measFBtn">Measure frequency (count 10 s)</button>
+            <button class="btn" id="measLBtn">Measure wavelength</button>
+            <button class="btn secondary" id="resetBtn">Reset</button>
+          </div>
+        </div>
+        <div class="readout">
+          <div class="box"><div class="k">f</div><div class="v"><span id="fR">—</span> Hz</div></div>
+          <div class="box"><div class="k">λ</div><div class="v"><span id="lR">—</span> cm</div></div>
+          <div class="box"><div class="k">v = fλ</div><div class="v"><span id="vR">—</span> m/s</div></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h3>Method</h3>
+        <ol class="method">
+          <li>Set up a ripple tank so that a thin layer of water covers the bottom. Place a lamp above and white paper below.</li>
+          <li>Connect a straight dipper to a signal generator. The dipper produces plane waves.</li>
+          <li>Set the frequency on the signal generator (e.g. 10 Hz). <b>f = frequency of dipper.</b></li>
+          <li>Count the number of wave fronts that pass a point in 10 s. f = count ÷ 10.</li>
+          <li>Look at the shadow of the waves on the paper. Use a ruler to measure the distance across 10 wavelengths and divide by 10 to get λ.</li>
+          <li>Calculate the wave speed: v = f × λ.</li>
+          <li>Repeat for different frequencies. v should be (approximately) constant in the same depth of water.</li>
+        </ol>
+
+        <h4>Variables</h4>
+        <div class="vars">
+          <div><b>Independent:</b> Frequency of dipper (Hz)</div>
+          <div><b>Dependent:</b> Wavelength (cm) — speed = fλ should remain constant</div>
+          <div><b>Control:</b> Same depth of water, same dipper, same ruler, same observer.</div>
+        </div>
+
+        <h4>Results</h4>
+        <table class="results" id="tbl">
+          <thead><tr><th>f /Hz</th><th>λ /cm</th><th>v /m s⁻¹</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <button class="btn" id="recordBtn">Record row</button>
+      </section>
+    </div>
+  </main>
+
+  <script src="../common.js"></script>
+  <script>
+  (function () {
+    var U = window.PracUtil;
+    var canvas = document.getElementById('tank'), ctx = canvas.getContext('2d');
+    U.bindRange('f','fV');
+    // speed of waves in shallow water - constant-ish
+    var v = 0.24; // m/s
+
+    var t0 = Date.now();
+
+    function draw() {
+      var W = canvas.width, H = canvas.height;
+      ctx.clearRect(0,0,W,H);
+      ctx.fillStyle = '#0b0d13'; ctx.fillRect(0,0,W,H);
+      // tank floor (white paper)
+      ctx.fillStyle = '#e6eef2'; ctx.fillRect(40, 40, W-80, H-80);
+      // waves
+      var f = parseInt(document.getElementById('f').value, 10);
+      var wavelengthM = v / f; // metres
+      var wavelengthPx = wavelengthM * 600; // px
+      var phase = ((Date.now() - t0)/1000) * f * 2 * Math.PI;
+      var amplitude = 0.7;
+      ctx.strokeStyle = '#444';
+      ctx.lineWidth = 1.2;
+      var x0 = 40, x1 = W - 40;
+      for (var x = x0; x < x1; x += 2) {
+        var val = Math.sin((x / wavelengthPx) * 2 * Math.PI - phase);
+        var shade = 230 - Math.round(amplitude * 80 * val);
+        ctx.fillStyle = 'rgb(' + shade + ',' + shade + ',' + (shade+10) + ')';
+        ctx.fillRect(x, 40, 2, H - 80);
+      }
+      // ruler on top
+      ctx.fillStyle = '#d9c58e'; ctx.fillRect(40, 40, W-80, 16);
+      for (var cm = 0; cm <= 40; cm++) {
+        var xx = 40 + cm * (W-80)/40;
+        ctx.strokeStyle = '#000';
+        ctx.beginPath(); ctx.moveTo(xx, 40); ctx.lineTo(xx, 40 + (cm%5===0 ? 12 : 6)); ctx.stroke();
+        if (cm%5===0) {
+          ctx.fillStyle = '#000'; ctx.font = '9px monospace';
+          ctx.fillText(cm, xx - 3, 52);
+        }
+      }
+      // dipper at top
+      ctx.fillStyle = '#222'; ctx.fillRect(40, 30, W-80, 6);
+      // label
+      ctx.fillStyle = '#e6f3f5'; ctx.font = '13px system-ui';
+      ctx.fillText('Ripple tank (plan view) — straight dipper at top', 44, 22);
+      requestAnimationFrame(draw);
+    }
+
+    document.getElementById('measFBtn').addEventListener('click', function () {
+      var f = parseInt(document.getElementById('f').value, 10);
+      // "measured" with some noise
+      var fm = f + (Math.random()-0.5) * 0.4;
+      document.getElementById('fR').textContent = fm.toFixed(1);
+    });
+    document.getElementById('measLBtn').addEventListener('click', function () {
+      var f = parseInt(document.getElementById('f').value, 10);
+      var wavelengthM = v / f;
+      var cm = wavelengthM * 100;
+      cm *= 0.97 + Math.random()*0.06;
+      document.getElementById('lR').textContent = cm.toFixed(1);
+      var fR = parseFloat(document.getElementById('fR').textContent);
+      if (!isNaN(fR)) {
+        var vR = fR * cm/100;
+        document.getElementById('vR').textContent = vR.toFixed(3);
+      }
+    });
+    document.getElementById('recordBtn').addEventListener('click', function () {
+      var f = parseFloat(document.getElementById('fR').textContent);
+      var l = parseFloat(document.getElementById('lR').textContent);
+      if (isNaN(f) || isNaN(l)) return;
+      var v = f * l/100;
+      U.addRow('tbl', [f.toFixed(1), l.toFixed(1), v.toFixed(3)]);
+    });
+    document.getElementById('resetBtn').addEventListener('click', function () {
+      U.clearTable('tbl');
+      document.getElementById('fR').textContent = '—';
+      document.getElementById('lR').textContent = '—';
+      document.getElementById('vR').textContent = '—';
+    });
+
+    draw();
+  })();
+  </script>
+</body>
+</html>

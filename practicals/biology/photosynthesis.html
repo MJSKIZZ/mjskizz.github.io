@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Photosynthesis — AQA RP5</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1><a href="../index.html" style="color: var(--accent);">← All practicals</a></h1>
+    <nav><a href="../index.html">Hub</a></nav>
+  </header>
+  <main class="wrap">
+    <div class="subject-head bio"><span class="chip">Biology · RP5</span><h2 style="margin:0;">Effect of light intensity on photosynthesis</h2></div>
+    <p class="note">Count the oxygen bubbles released by pondweed (elodea/cabomba) as a measure of the rate of photosynthesis. Apply the inverse square law.</p>
+
+    <div class="prac">
+      <section class="panel">
+        <h3>Simulation</h3>
+        <div class="sim">
+          <canvas id="tank" class="sim-canvas" width="560" height="360"></canvas>
+        </div>
+        <div class="controls">
+          <div class="row"><label>Lamp distance / cm</label>
+            <input type="range" id="dist" min="5" max="50" step="5" value="20">
+            <span class="val" id="distV">20</span>
+          </div>
+          <div class="row"><label>Count time / s</label>
+            <input type="number" id="time" value="60" min="10" max="120" step="10">
+          </div>
+          <div class="row">
+            <button class="btn" id="runBtn">Count bubbles</button>
+            <button class="btn secondary" id="resetBtn">Reset</button>
+          </div>
+        </div>
+        <div class="readout">
+          <div class="box"><div class="k">Distance (d)</div><div class="v"><span id="dR">20</span> cm</div></div>
+          <div class="box"><div class="k">Bubbles/min</div><div class="v"><span id="rate">—</span></div></div>
+          <div class="box"><div class="k">Light intensity 1/d²</div><div class="v"><span id="li">—</span></div></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h3>Method</h3>
+        <ol class="method">
+          <li>Fill a beaker with water and a small amount of sodium hydrogencarbonate (source of CO₂).</li>
+          <li>Cut a piece of pondweed ~5 cm, place it upside-down in the beaker with the cut end up.</li>
+          <li>Position a lamp a measured distance from the beaker.</li>
+          <li>Leave for 5 minutes to acclimatise.</li>
+          <li>Count the number of oxygen bubbles released in 1 minute (or collect gas in a measuring cylinder).</li>
+          <li>Repeat at different distances (10, 20, 30, 40, 50 cm). Do three repeats and take a mean.</li>
+          <li>Plot bubble count (rate) against 1/d² (proportional to light intensity).</li>
+        </ol>
+
+        <h4>Variables</h4>
+        <div class="vars">
+          <div><b>Independent:</b> Distance from lamp (light intensity = 1/d²)</div>
+          <div><b>Dependent:</b> Rate of bubble production</div>
+          <div><b>Control:</b> Temperature (use a heat shield/water bath), CO₂ concentration, same piece of pondweed.</div>
+        </div>
+
+        <h4>Results</h4>
+        <table class="results" id="tbl">
+          <thead><tr><th>d /cm</th><th>1/d² (×10⁻³)</th><th>Bubbles/min</th></tr></thead>
+          <tbody></tbody>
+        </table>
+
+        <h4>Graph: rate vs 1/d²</h4>
+        <canvas id="graph" class="graph"></canvas>
+        <p class="note">A straight line through the origin confirms rate ∝ light intensity (at low intensities, where light is the limiting factor).</p>
+      </section>
+    </div>
+  </main>
+
+  <script src="../common.js"></script>
+  <script>
+  (function () {
+    var U = window.PracUtil;
+    var canvas = document.getElementById('tank'), ctx = canvas.getContext('2d');
+    var dist = document.getElementById('dist');
+    U.bindRange('dist','distV');
+
+    var bubbles = [];
+    var graph = new U.Graph(document.getElementById('graph'), {
+      xLabel: '1/d² (×10⁻³)', yLabel: 'Bubbles per minute',
+      xMin: 0, xMax: 42, yMin: 0, yMax: 160, color: '#4caf50'
+    });
+
+    function scene(d) {
+      var W = canvas.width, H = canvas.height;
+      ctx.clearRect(0,0,W,H);
+      // lamp left side
+      var lx = 50, ly = H/2;
+      var beakerX = lx + 60 + (d * 4); // scale distance visually
+      beakerX = Math.min(beakerX, W-150);
+      // rays
+      var intensity = Math.max(0, 1 - d/80);
+      ctx.fillStyle = 'rgba(255,230,120,' + (0.3 * intensity + 0.1) + ')';
+      ctx.beginPath();
+      ctx.moveTo(lx, ly-30);
+      ctx.lineTo(beakerX, ly-70);
+      ctx.lineTo(beakerX, ly+70);
+      ctx.lineTo(lx, ly+30);
+      ctx.closePath(); ctx.fill();
+      // lamp
+      ctx.fillStyle = '#ffcc33';
+      ctx.beginPath(); ctx.arc(lx, ly, 22, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#333'; ctx.fillRect(lx-8, ly+22, 16, 40);
+      // beaker
+      ctx.fillStyle = 'rgba(80,200,230,0.2)';
+      ctx.fillRect(beakerX, ly-80, 110, 180);
+      ctx.strokeStyle = '#5ad0eb'; ctx.lineWidth = 2;
+      ctx.strokeRect(beakerX, ly-80, 110, 180);
+      // pondweed
+      ctx.fillStyle = '#2e8b57';
+      ctx.fillRect(beakerX + 50, ly+10, 10, 80);
+      for (var i = 0; i < 6; i++) {
+        ctx.beginPath(); ctx.arc(beakerX+55, ly+20+i*12, 7, 0, Math.PI*2); ctx.fill();
+      }
+      // bubbles rising
+      bubbles.forEach(function (b) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.arc(beakerX + 55 + b.x, ly + 10 - b.y, b.r, 0, Math.PI*2); ctx.stroke();
+      });
+      // ruler
+      ctx.strokeStyle = '#aaa'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(lx+25, H-30); ctx.lineTo(beakerX, H-30); ctx.stroke();
+      ctx.fillStyle = '#e6f3f5'; ctx.font = '13px system-ui';
+      ctx.fillText(d + ' cm', (lx+beakerX)/2 - 20, H - 12);
+    }
+
+    function animateBubbles() {
+      // passive float up whenever shown
+      bubbles = bubbles.filter(function (b) { b.y += 0.8; b.x += (Math.random()-0.5)*0.3; return b.y < 90; });
+      scene(parseInt(dist.value,10));
+      requestAnimationFrame(animateBubbles);
+    }
+
+    function runCount() {
+      var d = parseInt(dist.value, 10);
+      var t = parseInt(document.getElementById('time').value, 10) || 60;
+      // rate per minute - inverse square
+      var baseRate = 2400 / (d*d);
+      // cap at saturation (CO2 limiting)
+      var rate = Math.min(150, baseRate);
+      rate *= 0.9 + Math.random()*0.2;
+      var count = Math.round(rate * (t/60));
+      // shoot bubbles for effect (quick animation)
+      var N = Math.min(30, Math.floor(rate/5));
+      var spawned = 0;
+      var iv = setInterval(function () {
+        bubbles.push({ x: (Math.random()-0.5)*16, y: 0, r: 2 + Math.random()*2 });
+        spawned++;
+        if (spawned >= N) clearInterval(iv);
+      }, 80);
+      document.getElementById('dR').textContent = d;
+      document.getElementById('rate').textContent = Math.round(rate);
+      var li = 1/(d*d);
+      document.getElementById('li').textContent = (li*1000).toFixed(2) + ' ×10⁻³';
+      U.addRow('tbl', [d, (li*1000).toFixed(2), count]);
+      graph.add(li*1000, count);
+    }
+
+    document.getElementById('runBtn').addEventListener('click', runCount);
+    document.getElementById('resetBtn').addEventListener('click', function () {
+      bubbles = []; U.clearTable('tbl'); graph.reset();
+      document.getElementById('rate').textContent = '—';
+      document.getElementById('li').textContent = '—';
+    });
+    dist.addEventListener('input', function () {
+      document.getElementById('dR').textContent = dist.value;
+      scene(parseInt(dist.value,10));
+    });
+
+    animateBubbles();
+  })();
+  </script>
+</body>
+</html>

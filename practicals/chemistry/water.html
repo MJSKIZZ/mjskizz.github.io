@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Water — AQA RP14</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1><a href="../index.html" style="color: var(--accent);">← All practicals</a></h1>
+    <nav><a href="../index.html">Hub</a></nav>
+  </header>
+  <main class="wrap">
+    <div class="subject-head chem"><span class="chip">Chemistry · RP14</span><h2 style="margin:0;">Water analysis &amp; purification</h2></div>
+    <p class="note">Compare water samples for pH and dissolved solids, then purify sea water by simple distillation.</p>
+
+    <div class="prac">
+      <section class="panel">
+        <h3>Simulation</h3>
+        <div class="sim">
+          <canvas id="lab" class="sim-canvas" width="560" height="380"></canvas>
+        </div>
+        <div class="controls">
+          <div class="row"><label>Sample</label>
+            <select id="sample">
+              <option value="distilled">Distilled water</option>
+              <option value="tap">Tap water</option>
+              <option value="rain">Rain water</option>
+              <option value="sea">Sea water</option>
+              <option value="pond">Pond water</option>
+            </select>
+          </div>
+          <div class="row">
+            <button class="btn" id="phBtn">Test pH (universal indicator)</button>
+            <button class="btn" id="evapBtn">Evaporate 10 cm³ &amp; weigh residue</button>
+            <button class="btn" id="distilBtn">Distil the sample</button>
+          </div>
+          <button class="btn secondary" id="resetBtn">Reset</button>
+        </div>
+        <div class="readout">
+          <div class="box"><div class="k">pH</div><div class="v"><span id="ph">—</span></div></div>
+          <div class="box"><div class="k">Dissolved solids</div><div class="v"><span id="ds">—</span> mg/10 cm³</div></div>
+          <div class="box"><div class="k">After distillation</div><div class="v" id="dist">—</div></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h3>Method — Analysis</h3>
+        <ol class="method">
+          <li>Test each sample with universal indicator and compare the colour to a pH chart.</li>
+          <li>Weigh an evaporating basin. Add 10 cm³ of the sample and evaporate to dryness over a water bath.</li>
+          <li>Re-weigh the basin. The increase in mass = mass of dissolved solids.</li>
+          <li>Lower dissolved solids + neutral pH ≈ purer water.</li>
+        </ol>
+        <h3>Method — Simple distillation</h3>
+        <ol class="method">
+          <li>Heat the water sample in a flask with a delivery tube.</li>
+          <li>Water boils at 100 °C — the vapour is pure. Dissolved solids (e.g. salt) stay in the flask.</li>
+          <li>Condense the vapour in a Liebig condenser. Collect the condensate in a clean beaker.</li>
+          <li>Test the collected water — low dissolved solids, pH ≈ 7.</li>
+        </ol>
+        <h4>Variables</h4>
+        <div class="vars">
+          <div><b>Independent:</b> Water sample / purification step.</div>
+          <div><b>Dependent:</b> pH and mass of dissolved solids.</div>
+          <div><b>Control:</b> Same sample volume, same evaporating basin, same indicator.</div>
+        </div>
+
+        <h4>Results</h4>
+        <table class="results" id="tbl">
+          <thead><tr><th>Sample</th><th>pH</th><th>Dissolved solids mg/10 cm³</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </section>
+    </div>
+  </main>
+
+  <script src="../common.js"></script>
+  <script>
+  (function () {
+    var U = window.PracUtil;
+    var canvas = document.getElementById('lab'), ctx = canvas.getContext('2d');
+
+    var samples = {
+      distilled: { ph: 7.0, solids: 0,   colour: '#cfe9f2' },
+      tap:       { ph: 7.5, solids: 2,   colour: '#b7def0' },
+      rain:      { ph: 5.8, solids: 1,   colour: '#c5d5de' },
+      sea:       { ph: 8.2, solids: 350, colour: '#66bde0' },
+      pond:      { ph: 7.2, solids: 12,  colour: '#7ab584' }
+    };
+
+    var mode = 'normal';
+
+    function draw() {
+      var W = canvas.width, H = canvas.height;
+      ctx.clearRect(0,0,W,H);
+      ctx.fillStyle = '#0b0d13'; ctx.fillRect(0,0,W,H);
+      var s = samples[document.getElementById('sample').value];
+
+      if (mode === 'distil') {
+        // Distillation apparatus (simple)
+        var fx = 120, fy = 220;
+        // flask
+        ctx.fillStyle = s.colour;
+        ctx.beginPath(); ctx.arc(fx, fy, 52, 0, Math.PI*2); ctx.fill();
+        ctx.strokeStyle = '#8fe1f2'; ctx.lineWidth = 2; ctx.stroke();
+        ctx.fillStyle = '#cfcfcf'; ctx.fillRect(fx-8, fy-80, 16, 40);
+        // delivery tube
+        ctx.strokeStyle = '#8fe1f2'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(fx+8, fy-70); ctx.lineTo(fx+100, fy-70); ctx.lineTo(fx+200, fy+40); ctx.stroke();
+        // condenser (water jacket)
+        ctx.fillStyle = 'rgba(90,200,230,0.3)';
+        ctx.fillRect(fx+30, fy-88, 160, 36);
+        ctx.strokeStyle = '#8fe1f2';
+        ctx.strokeRect(fx+30, fy-88, 160, 36);
+        // collection beaker
+        ctx.strokeRect(fx+240, fy+30, 100, 100);
+        ctx.fillStyle = 'rgba(207,233,242,0.7)';
+        ctx.fillRect(fx+242, fy+70, 96, 58);
+        // heat
+        ctx.fillStyle = '#ff8a2a'; ctx.beginPath();
+        ctx.moveTo(fx-20, fy+60); ctx.quadraticCurveTo(fx, fy+20, fx+20, fy+60); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#e6f3f5'; ctx.font = '13px system-ui';
+        ctx.fillText('Simple distillation', 20, 28);
+        ctx.fillText('Pure water', fx+260, fy+160);
+      } else {
+        // two test tubes: sample and a universal indicator strip
+        for (var i = 0; i < 2; i++) {
+          var tx = W/3 + i * W/3, ty = 80, tw = 70, th = 200;
+          ctx.fillStyle = '#050608'; ctx.fillRect(tx - tw/2, ty, tw, th);
+          ctx.beginPath(); ctx.arc(tx, ty+th, tw/2, 0, Math.PI, false); ctx.fill();
+          ctx.strokeStyle = '#8fe1f2'; ctx.strokeRect(tx - tw/2, ty, tw, th);
+          // liquid
+          var col = i === 0 ? s.colour : pHColour(s.ph);
+          ctx.fillStyle = col;
+          ctx.fillRect(tx - tw/2 + 2, ty + th*0.3, tw - 4, th*0.7);
+          ctx.beginPath(); ctx.arc(tx, ty+th-2, tw/2 - 2, 0, Math.PI, false); ctx.fill();
+          // label
+          ctx.fillStyle = '#e6f3f5'; ctx.font = '13px system-ui';
+          ctx.fillText(i === 0 ? 'Sample' : 'Sample + UI', tx - 40, ty + th + 30);
+        }
+        ctx.fillStyle = '#9aa4b2';
+        ctx.fillText('Sample: ' + document.getElementById('sample').value, 20, 28);
+      }
+    }
+    function pHColour(ph) {
+      if (ph < 3) return '#c62828';
+      if (ph < 5) return '#ef6c00';
+      if (ph < 6.5) return '#fdd835';
+      if (ph < 7.5) return '#8bc34a';
+      if (ph < 9) return '#26a69a';
+      if (ph < 11) return '#3f51b5';
+      return '#6a1b9a';
+    }
+
+    document.getElementById('sample').addEventListener('change', function () { mode = 'normal'; draw(); });
+
+    document.getElementById('phBtn').addEventListener('click', function () {
+      var s = samples[document.getElementById('sample').value];
+      document.getElementById('ph').textContent = s.ph.toFixed(1);
+      mode = 'normal'; draw();
+    });
+    document.getElementById('evapBtn').addEventListener('click', function () {
+      var s = samples[document.getElementById('sample').value];
+      document.getElementById('ds').textContent = s.solids;
+      U.addRow('tbl', [document.getElementById('sample').value, s.ph.toFixed(1), s.solids]);
+    });
+    document.getElementById('distilBtn').addEventListener('click', function () {
+      mode = 'distil'; draw();
+      document.getElementById('dist').textContent = 'pH ≈ 7.0, ~0 mg solids (pure)';
+    });
+    document.getElementById('resetBtn').addEventListener('click', function () {
+      U.clearTable('tbl'); mode = 'normal';
+      document.getElementById('ph').textContent = '—';
+      document.getElementById('ds').textContent = '—';
+      document.getElementById('dist').textContent = '—';
+      draw();
+    });
+
+    draw();
+  })();
+  </script>
+</body>
+</html>
